@@ -7,10 +7,11 @@ from pathlib import Path
 import xarray as xr
 from xarray import Dataset
 import zarr
+# from zarr.codecs import BloscCodec
 from rich import print
 from dask.distributed import LocalCluster, Client
 from distributed import progress
-from zarr.storage import DirectoryStore
+from zarr.storage import DirectoryStore  # LocalStore  # for Zarr 3
 from typing_extensions import Annotated, Optional, List
 from .typer_parameters import (
     typer_option_dry_run,
@@ -23,10 +24,11 @@ from .typer_parameters import (
     typer_option_verbose,
 )
 from .constants import VERBOSE_LEVEL_DEFAULT
+from .drop import drop_other_data_variables
 
 DASK_SCHEDULER_IP = 'localhost'
 DASK_SCHEDULER_PORT = '8888'
-DASK_COMPUTE = False
+DASK_COMPUTE = True
 NUMBER_OF_WORKERS = 36
 
 XARRAY_OPEN_DATA_COMBINE = "nested"
@@ -43,6 +45,7 @@ COMPRESSION_LEVEL_DEFAULT = ZARR_COMPRESSOR_LEVEL
 ZARR_COMPRESSOR_SHUFFLE = "shuffle"
 SHUFFLING_DEFAULT = ZARR_COMPRESSOR_SHUFFLE
 # ZARR_COMPRESSOR = zarr.codecs.BloscCodec(
+# ZARR_COMPRESSOR = BloscCodec(
 ZARR_COMPRESSOR = zarr.blosc.Blosc(
     cname=ZARR_COMPRESSOR_CODEC,
     clevel=ZARR_COMPRESSOR_LEVEL,
@@ -83,12 +86,12 @@ def apply_safe_chunking(dataset, main_variable, time_chunks, lat_chunks, lon_chu
             del dataset[var].encoding['compressor']
             
         # Apply safe chunking to auxiliary variables
-        if var in ['lat_bnds', 'lon_bnds']:
+        if var in ['lat', 'lon']:
             dataset[var] = dataset[var].chunk({
                 'time': time_chunks,
                 'lat': lat_chunks,
                 'lon': lon_chunks,
-                'bnds': 2  # Explicit chunk for bounds dimension
+                # 'bnds': 2  # Explicit chunk for bounds dimension
             })
     
     return dataset
@@ -181,38 +184,63 @@ def parse_compression_filters(compressing_filters: str) -> List[str]:
 
 def generate_zarr_store(
     dataset: Dataset,
-    store: str,
-    latitude_chunks: int,
-    longitude_chunks: int,
-    time_chunks: int = -1,
+    variable: str,
+    store: DirectoryStore, # for Zarr 2
+    # latitude_chunks: int,
+    # longitude_chunks: int,
+    # time_chunks: int = -1,
     compute: bool = DASK_COMPUTE,
     consolidate: bool = ZARR_CONSOLIDATE,
     compressor = ZARR_COMPRESSOR,
+    drop_other_variables: bool = True,
     mode: str = 'w-',
 ):
     """
+    Notes
+    -----
+
+    Files produced by `ncks` or with legacy compression : often have .encoding
+    attributes referencing numcodecs codecs (e.g., numcodecs.shuffle.Shuffle),
+    which are not accepted by Zarr v3. In order to avoid encoding related
+    errors, we clear the legacy encoding from all variables before writing.
+
     """
-    print(f" {GREEN_DASH} Chunk the dataset")
-    dataset = dataset.chunk({"time": time_chunks, "lat": latitude_chunks, "lon": longitude_chunks})
-    print(f'   > Dataset shape after chunking : {dataset.data_vars}')
+    # Drop "other" data variables
+    if drop_other_variables:
+        dataset = drop_other_data_variables(dataset)
+
+    # Reset legacy encoding
+    for var in dataset.variables:
+        dataset[var].encoding = {}  # Critical step!
+   
+    # print(f" {GREEN_DASH} Chunk the dataset")
+    # dataset = dataset.chunk({"time": time_chunks, "lat": latitude_chunks, "lon": longitude_chunks})
+    # print(f'   > Dataset shape after chunking : {dataset.data_vars}')
 
     print(f"   Define the store path for the current chunking shape")
-    # store = LocalStore(store_path)
     store = DirectoryStore(store)
+    # store = LocalStore(store)  # for Zarr 3
 
-    print(f' {GREEN_DASH} Build the Dask task graph')
+    # Define Zarr v3 encoding
+    encoding = {
+        dataset[variable].name: {"compressors": (compressor,)},
+    }
+    for coord in dataset.coords:
+        encoding[coord] = {"compressors": (), "filters": ()}
+   
+    # Write to Zarr
+    if compute == False:
+        print(f' {GREEN_DASH} Build the Dask task graph')
+    print(f' {GREEN_DASH} Generate Zarr store')
+
     return dataset.to_zarr(
         store=store,
-        compute=False,
+        compute=compute,
         consolidated=consolidate,
-        encoding={
-            dataset.SIS.name: {"compressors": compressor},
-            "time": {"compressors": compressor},
-            "lat": {"compressors": compressor},
-            "lon": {"compressors": compressor},
-        },
+        encoding=encoding,
+        # zarr_format=3,
         mode=mode,
-        safe_chunks=False,
+        # safe_chunks=False,
     )
 
 
@@ -223,24 +251,24 @@ def convert_parquet_to_zarr_store(
     # longitude: Annotated[float, typer_argument_longitude_in_degrees],
     # latitude: Annotated[float, typer_argument_latitude_in_degrees],
     # window: Annotated[int, typer_option_spatial_window_in_degrees] = None,
-    time: Annotated[
-        int | None,
-        typer.Option(
-            help="New chunk size for the `time` dimension.",
-        ),
-    ],
-    latitude: Annotated[
-        int | None,
-        typer.Option(
-            help="New chunk size for the `lat` dimension.",
-        ),
-    ],
-    longitude: Annotated[
-        int | None,
-        typer.Option(
-            help="New chunk size for the `lon` dimension.",
-        ),
-    ],
+    # time: Annotated[
+    #     int | None,
+    #     typer.Option(
+    #         help="New chunk size for the `time` dimension.",
+    #     ),
+    # ],
+    # latitude: Annotated[
+    #     int | None,
+    #     typer.Option(
+    #         help="New chunk size for the `lat` dimension.",
+    #     ),
+    # ],
+    # longitude: Annotated[
+    #     int | None,
+    #     typer.Option(
+    #         help="New chunk size for the `lon` dimension.",
+    #     ),
+    # ],
     # tolerance: Annotated[
     #     Optional[float], typer_option_tolerance
     # ] = DATASET_SELECT_TOLERANCE_DEFAULT,
@@ -276,32 +304,6 @@ def convert_parquet_to_zarr_store(
         # tolerance=tolerance,
     )
     
-    # Remove bounds variables if present
-    drop_vars = [v for v in ['lat_bnds', 'lon_bnds'] if v in dataset.variables]
-    if drop_vars:
-        dataset = dataset.drop_vars(drop_vars)
-
-    # Remove the 'bnds' dimension if now unused
-    if 'bnds' in dataset.dims and all('bnds' not in var.dims for var in dataset.variables):
-        dataset = dataset.drop_dims('bnds')
-
-   # Remove 'bounds' attributes from lat/lon coordinates
-    for coord in ['lat', 'lon']:
-        if coord in dataset.coords and 'bounds' in dataset[coord].attrs:
-            del dataset[coord].attrs['bounds']
-
-    print(f"{dataset=}")
-
-
-    # In your conversion function:
-    dataset = apply_safe_chunking(
-        dataset,
-        main_variable=variable,
-        time_chunks=time,
-        lat_chunks=latitude,
-        lon_chunks=longitude
-    )
-
     # # Before generating Zarr store
     # for var in dataset.variables:
     #     if var != variable:  # main_variable='SIS'
@@ -314,13 +316,15 @@ def convert_parquet_to_zarr_store(
 
     # Generate Zarr store -- Build the Dask task graph
     
-    future = generate_zarr_store(
+    # future = generate_zarr_store(
+    generate_zarr_store(
         dataset=dataset,
+        variable=variable,
         store=str(zarr_store),
-        time_chunks=time,
-        latitude_chunks=latitude,
-        longitude_chunks=longitude,
-        compute=False,
+        # time_chunks=time,
+        # latitude_chunks=latitude,
+        # longitude_chunks=longitude,
+        compute=True,
         consolidate=ZARR_CONSOLIDATE,
         compressor=ZARR_COMPRESSOR,
         mode='w-',
@@ -336,7 +340,7 @@ def convert_parquet_to_zarr_store(
     # ) as cluster:
     #     print(f"   {GREEN_DASH} Connect to local cluster")
         # with Client(cluster) as client:
-    with Client(dask_scheduler, n_workers=workers, memory_limit=memory_limit) as client:  # noqa
-        print(f'{client=}')
-        future = future.persist()
-        progress(future)
+    # with Client(dask_scheduler, n_workers=workers, memory_limit=memory_limit) as client:  # noqa
+    #     print(f'{client=}')
+    #     future = future.persist()
+    #     progress(future)
