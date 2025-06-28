@@ -4,10 +4,9 @@ Rekx is a command line interface to Kerchunk
 from typing import Annotated
 
 import typer
-from rich import print
 from rich.panel import Panel
 
-from rekx.clip import clip_netcdf_file, clip_netcdf_file_cli
+from rekx.clip import clip_netcdf_file_cli
 from rekx.messages import NOT_IMPLEMENTED_CLI
 
 from .combine import combine_kerchunk_references, combine_kerchunk_references_to_parquet
@@ -20,11 +19,13 @@ from .parquet import (
     parquet_reference,
     select_from_parquet,
 )
-from .rechunk import (
-    generate_rechunk_commands,
+from .nccopy import (
     generate_rechunk_commands_for_multiple_netcdf,
+)
+from .rechunk import (
     modify_chunk_size,
     rechunk,
+    rechunk_netcdf_files,
 )
 from .reference import create_kerchunk_reference
 from .rich_help_panel_names import (
@@ -136,6 +137,12 @@ app.command(
     no_args_is_help=True,
     rich_help_panel=rich_help_panel_rechunking,
 )(rechunk)
+app.command(
+    name="rechunk-multiple",
+    help=f"Rechunk NetCDF file",
+    no_args_is_help=True,
+    rich_help_panel=rich_help_panel_rechunking,
+)(rechunk_netcdf_files)
 app.command(
     name="rechunk-generator",
     help=f"Generate variations of rechunking commands for multiple files",
