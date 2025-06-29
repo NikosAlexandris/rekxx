@@ -1,7 +1,11 @@
 import enum
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing_extensions import List, Optional
+from typing_extensions import List
+
+from rekx.constants import VERBOSE_LEVEL_DEFAULT
+from rekx.drop import drop_other_data_variables
+from .log import logger
 
 FIX_UNLIMITED_DIMENSIONS_DEFAULT = False
 CACHE_SIZE_DEFAULT = 16777216
@@ -195,14 +199,13 @@ class NetCDF4Backend(RechunkingBackendBase):
         # logger.info(f"Completed rechunking from {input_filepath} to {output_filepath}")
 
 
-# class XarrayBackend(RechunkingBackendBase):
-    # def rechunk(self, *args, **kwargs):
 def rechunk_netcdf_via_xarray(
     input_filepath: Path,
     output_filepath: Path,
     time: int,
     latitude: int,
     longitude: int,
+    drop_other_variables: bool = True,
     mode: str = 'w-',
     overwrite_output: bool = False,
     encoding: dict = {},
@@ -231,11 +234,16 @@ def rechunk_netcdf_via_xarray(
     Examples
     --------
     # >>> rechunk_netcdf(Path("input.nc"), Path("output.nc"), {'time': 365, 'lat': 25, 'lon': 25})
+
     """
     # Open the dataset
     import xarray as xr
 
     dataset = xr.open_dataset(input_filepath)
+
+    # Drop "other" data variables
+    if drop_other_variables:
+        dataset = drop_other_data_variables(dataset)
 
     # Reset legacy encoding
     for variable in dataset.variables:
@@ -257,7 +265,7 @@ def rechunk_netcdf_via_xarray(
             elif dimension == "lon":
                 chunk_sizes.append(longitude)
             else:
-                chunk_sizes.append(dataset.dims[dimension])
+                chunk_sizes.append(dataset.sizes[dimension])
         encoding[variable] = {"chunksizes": tuple(chunk_sizes)}
 
     # print(f"Encoding for new Dataset : {encoding}")
@@ -275,7 +283,7 @@ def rechunk_netcdf_via_xarray(
         compute=compute,
     )
 
-    return output_filepath
+    # return output_filepath
 
 
 class XarrayBackend(RechunkingBackendBase):
@@ -287,6 +295,7 @@ class XarrayBackend(RechunkingBackendBase):
         time: int = None,
         latitude: int = None,
         longitude: int = None,
+        drop_other_variables: bool = True,
         fix_unlimited_dimensions: bool = False,
         cache_size: int = CACHE_SIZE_DEFAULT,
         cache_elements: int = CACHE_ELEMENTS_DEFAULT,
@@ -299,25 +308,25 @@ class XarrayBackend(RechunkingBackendBase):
         overwrite_output: bool = False,
         engine: str = 'h5netcdf',
         dry_run: bool = False,
+        verbose: int = VERBOSE_LEVEL_DEFAULT, 
         **kwargs
     ):
         """
         """
-        # if not output_filepath.exists():
-        #     output_filepath.parent.mkdir(parents=True, exist_ok=True)
-        if dry_run:
-            return f"xarray rechunk from {input_filepath} to {output_filepath} with chunks (time={time}, lat={latitude}, lon={longitude})"
-        else:
-            return rechunk_netcdf_via_xarray(
+        message = f"\nRechunk via Xarray\n   - from {input_filepath}\n   - to {output_filepath}\n   - with chunks (time={time}, lat={latitude}, lon={longitude})"
+        if not dry_run:
+            rechunk_netcdf_via_xarray(
                 input_filepath=input_filepath,
                 output_filepath=output_filepath,
                 time=time,
                 latitude=latitude,
                 longitude=longitude,
+                drop_other_variables=drop_other_variables,
                 mode=mode,
                 overwrite_output=overwrite_output,
                 engine=engine,
             )
+        return message
 
 
 @enum.unique
