@@ -192,7 +192,6 @@ def generate_zarr_store(
     compute: bool = DASK_COMPUTE,
     consolidate: bool = ZARR_CONSOLIDATE,
     compressor = ZARR_COMPRESSOR,
-    drop_other_variables: bool = True,
     mode: str = 'w-',
 ):
     """
@@ -205,10 +204,6 @@ def generate_zarr_store(
     errors, we clear the legacy encoding from all variables before writing.
 
     """
-    # Drop "other" data variables
-    if drop_other_variables:
-        dataset = drop_other_data_variables(dataset)
-
     # Reset legacy encoding
     for var in dataset.variables:
         dataset[var].encoding = {}  # Critical step!
@@ -280,6 +275,7 @@ def convert_parquet_to_zarr_store(
     ] = COMPRESSION_LEVEL_DEFAULT,
     shuffling: Annotated[str, typer.Option(help=f"Shuffle... ")] = SHUFFLING_DEFAULT,
     # backend: Annotated[RechunkingBackend, typer.Option(help="Backend to use for rechunking. [code]nccopy[/code] [red]Not Implemented Yet![/red]")] = RechunkingBackend.nccopy,
+    drop_other_variables: Annotated[bool, typer.Option(help="Drop variables other than the main one. [yellow bold]Attention, presets are the author's best guess![/yellow bold]")] = True,
     dask_scheduler: Annotated[
         str, typer.Option(help="The port:ip of the dask scheduler")
     ] = None,
@@ -303,16 +299,10 @@ def convert_parquet_to_zarr_store(
         # latitude=latitude,
         # tolerance=tolerance,
     )
-    
-    # # Before generating Zarr store
-    # for var in dataset.variables:
-    #     if var != variable:  # main_variable='SIS'
-    #         # Clear conflicting encoding for non-primary variables
-    #         dataset[var].encoding.pop('chunks', None)
-    #         dataset[var].encoding.pop('compressor', None)
 
-    # # Rechunk
-    # dataset = dataset.chunk({'time': time, 'lat': latitude, 'lon': longitude})
+    # Drop "other" data variables
+    if drop_other_variables:
+        dataset = drop_other_data_variables(dataset)
 
     # Generate Zarr store -- Build the Dask task graph
     
