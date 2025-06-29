@@ -13,12 +13,15 @@ from .combine import combine_kerchunk_references, combine_kerchunk_references_to
 from .consistency import check_chunk_consistency_json
 from .inspect import inspect_netcdf_data
 from .log import initialize_logger, logger
-from .parquet import (
+from .parquet.combine import (
     combine_parquet_stores_to_parquet,
-    parquet_multi_reference,
-    parquet_reference,
-    select_from_parquet,
+    combine_pair_wise_parquet_stores_to_parquet,
 )
+from .parquet.reference import (
+    parquet_reference,
+    parquet_multi_reference,
+)
+from .parquet.select import select_from_parquet
 from .nccopy import (
     generate_rechunk_commands_for_multiple_netcdf,
 )
@@ -191,6 +194,12 @@ app.command(
     no_args_is_help=True,
     rich_help_panel=rich_help_panel_combine,
 )(combine_parquet_stores_to_parquet)
+app.command(
+    "combine-pair-wise-parquet-stores",
+    help=f"Combine multiple Parquet stores (Parquets to Parquet) following a pair-wise tree reduction",
+    no_args_is_help=True,
+    rich_help_panel=rich_help_panel_combine,
+)(combine_pair_wise_parquet_stores_to_parquet)
 
 app.command(
     "parquet-to-zarr",
