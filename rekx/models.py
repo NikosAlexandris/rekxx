@@ -126,6 +126,19 @@ def select_xarray_variable_set_from_dataset(
     # return selected_variables
 
 
+def validate_variable_set(variable_set_input: list[str]) -> list[XarrayVariableSet]:
+    if not variable_set_input:
+        # Use a sensible default or raise
+        return [XarrayVariableSet.all]
+    validated = []
+    for v in variable_set_input:
+        if v in XarrayVariableSet.__members__:
+            validated.append(XarrayVariableSet[v])
+        else:
+            raise ValueError(f"Invalid variable set: {v}")
+    return validated
+
+
 def select_netcdf_variable_set_from_dataset(
     netcdf4_variable_set: Type[enum.Enum],
     variable_set: List[enum.Enum],

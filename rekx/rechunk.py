@@ -1,10 +1,10 @@
+from rich import print
 import shlex
 import subprocess
 from pathlib import Path
 from typing import Optional
 import netCDF4 as nc
 import typer
-
 from .typer_parameters import (
     typer_option_dry_run,
     typer_argument_source_path_with_pattern,
@@ -12,17 +12,13 @@ from .typer_parameters import (
     typer_option_filename_pattern,
 )
 import xarray as xr
-
 from rich import print
-
 from typing_extensions import Annotated
-
 from rekx.backend import RechunkingBackend
 from rekx.constants import VERBOSE_LEVEL_DEFAULT
 from rekx.typer_parameters import typer_option_verbose
-
 from .log import logger
-from .models import XarrayVariableSet, select_xarray_variable_set_from_dataset
+from .models import XarrayVariableSet, select_xarray_variable_set_from_dataset, validate_variable_set
 from .typer_parameters import (
     typer_option_dry_run,
 )
@@ -45,6 +41,7 @@ from .nccopy_constants import (
     RECHUNK_IN_MEMORY_DEFAULT,
     DRY_RUN_DEFAULT,
 )
+
 
 def modify_chunk_size(
     netcdf_file,
@@ -74,42 +71,119 @@ def modify_chunk_size(
             )
 
 
-def _rechunk_single_file(
-    input_file: Path,
-    output_file: Path,
+# def _rechunk_single_file(
+#     input_file: Path,
+#     output_file: Path,
+#     time: int,
+#     latitude: int,
+#     longitude: int,
+#     # Other parameters
+# ) -> None:
+#     """Core rechunking logic for a single file"""
+#     try:
+#         with xr.open_dataset(input_file, engine="netcdf4") as dataset:
+#             # Your existing rechunking logic here
+#             # Example:
+#             encoding = {}
+#             for var in dataset.data_vars:
+#                 chunk_sizes = []
+#                 for dim in dataset[var].dims:
+#                     if dim == 'time': 
+#                         chunk_size = time if time > 0 else len(dataset[dim])
+#                     elif dim == 'lat': 
+#                         chunk_size = latitude
+#                     elif dim == 'lon': 
+#                         chunk_size = longitude
+#                     else:
+#                         chunk_size = len(dataset[dim])
+#                     chunk_sizes.append(chunk_size)
+#                 encoding[var] = {'chunksizes': tuple(chunk_sizes)}
+            
+#             dataset.to_netcdf(
+#                 output_file,
+#                 encoding=encoding,
+#                 engine="h5netcdf"
+#             )
+#         typer.echo(f"Processed {input_file.name}")
+#     except Exception as e:
+#         typer.echo(f"Error processing {input_file.name}: {str(e)}")
+
+
+def _rechunk_netcdf_file(
+    input_filepath: Path,
+    output_filepath: Path | None,
     time: int,
     latitude: int,
     longitude: int,
-    # Other parameters
-) -> None:
-    """Core rechunking logic for a single file"""
+    fix_unlimited_dimensions: bool = FIX_UNLIMITED_DIMENSIONS_DEFAULT,
+    variable_set: list[XarrayVariableSet] = list[XarrayVariableSet.all],
+    drop_other_variables: bool = True,
+    cache_size: int | None = CACHE_SIZE_DEFAULT,
+    cache_elements: int | None = CACHE_ELEMENTS_DEFAULT,
+    cache_preemption: float | None = CACHE_PREEMPTION_DEFAULT,
+    compression: str = COMPRESSION_FILTER_DEFAULT,
+    compression_level: int = COMPRESSION_LEVEL_DEFAULT,
+    shuffling: str | None = SHUFFLING_DEFAULT,
+    memory: bool = RECHUNK_IN_MEMORY_DEFAULT,
+    mode: str = 'w-',
+    overwrite_output: bool = False,
+    dry_run: bool = DRY_RUN_DEFAULT,
+    backend: RechunkingBackend = RechunkingBackend.xarray,
+    dask_scheduler: str | None = None,
+    verbose: int = VERBOSE_LEVEL_DEFAULT,
+):
+    """
+    Rechunk a NetCDF4 dataset with options to fine tune the output
+
+    """
     try:
-        with xr.open_dataset(input_file, engine="netcdf4") as dataset:
-            # Your existing rechunking logic here
-            # Example:
-            encoding = {}
-            for var in dataset.data_vars:
-                chunk_sizes = []
-                for dim in dataset[var].dims:
-                    if dim == 'time': 
-                        chunk_size = time if time > 0 else len(dataset[dim])
-                    elif dim == 'lat': 
-                        chunk_size = latitude
-                    elif dim == 'lon': 
-                        chunk_size = longitude
-                    else:
-                        chunk_size = len(dataset[dim])
-                    chunk_sizes.append(chunk_size)
-                encoding[var] = {'chunksizes': tuple(chunk_sizes)}
-            
-            dataset.to_netcdf(
-                output_file,
-                encoding=encoding,
-                engine="h5netcdf"
+        with xr.open_dataset(input_filepath, engine="h5netcdf") as dataset:
+            variable_set = validate_variable_set(variable_set)
+            selected_variables = select_xarray_variable_set_from_dataset(
+                XarrayVariableSet, variable_set, dataset
             )
-        typer.echo(f"Processed {input_file.name}")
+            backend_name = backend.name
+            backend = backend.get_backend()
+            command = backend.rechunk(
+                input_filepath=input_filepath,
+                variables=list(selected_variables),
+                output_filepath=output_filepath,
+                time=time,
+                latitude=latitude,
+                longitude=longitude,
+                drop_other_variables=drop_other_variables,
+                fix_unlimited_dimensions=fix_unlimited_dimensions,
+                cache_size=cache_size,
+                cache_elements=cache_elements,
+                cache_preemption=cache_preemption,
+                compression=compression,
+                compression_level=compression_level,
+                shuffling=shuffling,
+                memory=memory,
+                mode=mode,
+                overwrite_output=overwrite_output,
+                dry_run=dry_run,  # = True : just return the command!
+                verbose=verbose,
+            )
+
+            # -------------------------------------------- Re-Design Me ------
+            # Only nccopy backend returns executable commands
+            if backend_name == RechunkingBackend.nccopy.name:
+                subprocess.run(shlex.split(command), check=True)
+                command_arguments = shlex.split(command)
+                try:
+                    subprocess.run(command_arguments, check=True)
+                    print(f"Command {command} executed successfully.")
+                except subprocess.CalledProcessError as e:
+                    print(f"An error occurred while executing the command: {e}")
+
+            else:
+                return command
+                # logger.info(f"Rechunking completed: {command}")
+            # -------------------------------------------- Re-Design Me ------
+
     except Exception as e:
-        typer.echo(f"Error processing {input_file.name}: {str(e)}")
+        typer.echo(f"Error processing {input_filepath.name}: {str(e)}")
 
 
 def rechunk(
@@ -128,8 +202,7 @@ def rechunk(
         bool, typer.Option(help="Convert unlimited size input dimensions to fixed size dimensions in output.")
     ] = FIX_UNLIMITED_DIMENSIONS_DEFAULT,
     variable_set: Annotated[
-        list[XarrayVariableSet], typer.Option(help="Set of Xarray variables to diagnose")
-    ] = list[XarrayVariableSet.all],
+        list[XarrayVariableSet], typer.Option(help="Set of Xarray variables to rechunk [bold red]Not Fully Functional Yet![/bold red]")] = list[XarrayVariableSet.all],
     cache_size: Optional[int] = CACHE_SIZE_DEFAULT,
     cache_elements: Optional[int] = CACHE_ELEMENTS_DEFAULT,
     cache_preemption: Optional[float] = CACHE_PREEMPTION_DEFAULT,
@@ -153,6 +226,7 @@ def rechunk(
 ):
     """
     Rechunk a NetCDF4 dataset with options to fine tune the output
+
     """
     if verbose:
         import time as timer
@@ -165,13 +239,7 @@ def rechunk(
     #     typer.echo(f"Using Dask scheduler at {dask_scheduler}")
 
     try:
-        with xr.open_dataset(input_filepath, engine="netcdf4") as dataset:
-            # with Dataset(input, 'r') as dataset:
-            # def validate_variable_set(variable_set_input: list[str]) -> list[XarrayVariableSet]:
-            #     if variable_set_input in XarrayVariableSet.__members__:
-            #         return XarrayVariableSet[variable_set_input]
-            #     else:
-            #         raise ValueError(f"Invalid variable set: {variable_set_input}")
+        with xr.open_dataset(input_filepath, engine="h5netcdf") as dataset:
 
             def validate_variable_set(variable_set_input: list[str]) -> list[XarrayVariableSet]:
                 if not variable_set_input:
@@ -208,13 +276,15 @@ def rechunk(
                 memory=memory,
                 mode=mode,
                 overwrite_output=overwrite_output,
-                dry_run=dry_run,  # just return the command!
+                dry_run=dry_run,  # = True : just return the command!
+                verbose=verbose,
             )
 
             if dry_run:
-                print(
-                    f"[bold]Dry run[/bold] the [bold]following command that would be executed[/bold] :",
-                    f"    {command}"
+                if verbose:
+                    print(
+                        f"[bold]Dry run[/bold] the [bold]following command that would be executed[/bold] :",
+                        f"    {command}",
                     )
 
                 return  # Exit for a dry run
@@ -232,12 +302,12 @@ def rechunk(
                         print(f"An error occurred while executing the command: {e}")
 
                 else:
-                    print(f"Rechunking completed: {command}")
+                    logger.info(f"Rechunking completed: {command}")
 
             if verbose:
                 rechunking_timer_end = timer.time()
                 elapsed_time = rechunking_timer_end - rechunking_timer_start
-                logger.debug(f"Rechunking via {backend} took {elapsed_time:.2f} seconds")
+                logger.info(f"Rechunking via {backend} took {elapsed_time:.2f} seconds")
                 print(f"Rechunking took {elapsed_time:.2f} seconds.")
 
     except Exception as e:
@@ -261,12 +331,13 @@ def rechunk_netcdf_files(
     variable_set: Annotated[
         list[XarrayVariableSet], typer.Option(help="Set of Xarray variables to diagnose")
     ] = list[XarrayVariableSet.all],
+    drop_other_variables: Annotated[bool, typer.Option(help="Drop variables other than the main one. [yellow bold]Attention, presets are the author's best guess![/yellow bold]")] = True,
     cache_size: Optional[int] = CACHE_SIZE_DEFAULT,
     cache_elements: Optional[int] = CACHE_ELEMENTS_DEFAULT,
     cache_preemption: Optional[float] = CACHE_PREEMPTION_DEFAULT,
     compression: str = COMPRESSION_FILTER_DEFAULT,
     compression_level: int = COMPRESSION_LEVEL_DEFAULT,
-    shuffling: str = SHUFFLING_DEFAULT,
+    shuffling: str | None = SHUFFLING_DEFAULT,
     memory: bool = RECHUNK_IN_MEMORY_DEFAULT,
     backend: Annotated[
         RechunkingBackend,
@@ -282,6 +353,10 @@ def rechunk_netcdf_files(
     verbose: Annotated[int, typer_option_verbose] = VERBOSE_LEVEL_DEFAULT,
 ) -> None:
     """Rechunk multiple NetCDF files in parallel"""
+    if verbose:
+        import time as timer
+
+        rechunking_timer_start = timer.time()
     # Resolve input files
     if source_path.is_file():
         input_file_paths = [source_path]
@@ -298,9 +373,9 @@ def rechunk_netcdf_files(
 
     if dry_run:
         dry_run_message = (
-                f"[bold]Dry running operations that would be performed[/bold] :"
+                f"Dry running operations that [bold]would be performed[/bold] :"
                 f"\n"
-                f"> Reading files in [code]{source_path}[/code] matching the pattern [code]{pattern}[/code]"
+                f"> Matching filename pattern [code]{pattern}[/code] in [code]{source_path}[/code]" 
                 f"\n"
                 f"> Number of files matched : {len(list(input_file_paths))}"
                 f"\n"
@@ -308,15 +383,12 @@ def rechunk_netcdf_files(
                 )
         print(dry_run_message)
 
-    if input_file_paths and not output_directory.exists():
-        output_directory.mkdir(parents=True, exist_ok=True)
-        if verbose > 0:
-            print(f"[yellow]Convenience action[/yellow] : creating the requested output directory [code]{output_directory}[/code].")
-
-    # Prepare output directory
-    output_directory.mkdir(parents=True, exist_ok=True)
-    # output_files = [Path(output_directory) / f"{f.stem}_rechunked{f.suffix}" for f in input_file_paths]
-    # output_files = [Path(output_directory) / f.name for f in input_file_paths]
+    else:
+        # "Make" the output directory
+        if input_file_paths and not output_directory.exists():
+            output_directory.mkdir(parents=True, exist_ok=True)
+            if verbose > 0:
+                print(f"[yellow]Creating the requested output directory[/yellow] [code]{output_directory}[/code].")
 
     output_filename_base = f"{time}_{latitude}_{longitude}_{compression}_{compression_level}"
     if shuffling and compression_level > 0:
@@ -333,17 +405,18 @@ def rechunk_netcdf_files(
         memory_limit=memory_limit,
     )
     if verbose:
-        typer.echo(f"Processing {len(input_file_paths)} files with {workers} workers")
+        print(f"Processing {len(input_file_paths)} files with {workers} workers")
 
     # Create processing function with fixed parameters
     # with multiprocessing.Pool(processes=workers) as pool:
     partial_rechunk_command = partial(
-        rechunk,
+        _rechunk_netcdf_file,
         time=time,
         latitude=latitude,
         longitude=longitude,
         fix_unlimited_dimensions=fix_unlimited_dimensions,
         variable_set=variable_set,
+        drop_other_variables=drop_other_variables,
         cache_size=cache_size,
         cache_elements=cache_elements,
         cache_preemption=cache_preemption,
@@ -355,17 +428,54 @@ def rechunk_netcdf_files(
         overwrite_output=overwrite_output,
         dry_run=dry_run,  # just return the command!
         backend=backend,
+        verbose=verbose,
     )
         # pool.map(partial_rechunk_command, input_file_paths)
-    if verbose:
-        print(f"[bold green]Done![/bold green]")
 
-    # Process files in parallel
-    tasks = [
-        dask.delayed(partial_rechunk_command)(in_file, out_file)
-        for in_file, out_file in zip(input_file_paths, output_files)
-    ]
+    # Build the task graph
+    tasks = []
+    for in_file, out_file in zip(input_file_paths, output_files):
+        task = dask.delayed(partial_rechunk_command)(
+            in_file,
+            out_file,
+        )
+        tasks.append(task)
 
-    dask.compute(*tasks)
-    if verbose:
-        typer.echo("Parallel rechunking completed")
+        # Print command immediately if verbose
+        if verbose:
+            # Get command without executing (dry-run=True)
+            cmd = _rechunk_netcdf_file(
+                in_file,
+                out_file, 
+                time=time,
+                latitude=latitude,
+                longitude=longitude,
+                fix_unlimited_dimensions=fix_unlimited_dimensions,
+                variable_set=variable_set,
+                cache_size=cache_size,
+                cache_elements=cache_elements,
+                cache_preemption=cache_preemption,
+                compression=compression,
+                compression_level=compression_level,
+                shuffling=shuffling,
+                memory=memory,
+                mode=mode,
+                overwrite_output=overwrite_output,
+                dry_run=True,  # just return the command !
+                backend=backend,
+                verbose=verbose,
+            )
+            print(f"  [green]>[/green] [code dim]{cmd}[/code dim]")
+
+
+    if not dry_run:
+        dask.compute(*tasks)
+
+        if verbose:
+            print(f"[bold green]Rechunking operations complete.[/bold green]")
+
+        if verbose:
+            rechunking_timer_end = timer.time()
+            elapsed_time = rechunking_timer_end - rechunking_timer_start
+            logger.info(f"Rechunking via {backend} took {elapsed_time:.2f} seconds")
+            print(f"Rechunking via [code]{backend.name}[/code] took {elapsed_time:.2f} seconds.")
