@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from rich import print
 from rich.box import SIMPLE_HEAD
 from rich.console import Console
 from rich.table import Table
@@ -141,7 +140,7 @@ def print_metadata_table(metadata):
 
 def print_metadata_series_table(
     metadata_series: dict,
-    group_metadata=False,
+    group_metadata: bool = False,
 ):
     """ """
     for filename, metadata in metadata_series.items():
@@ -189,7 +188,7 @@ def print_metadata_series_table(
 
 def print_metadata_series_long_table(
     metadata_series: dict,
-    group_metadata=False,
+    group_metadata: bool = False,
 ):
     """ """
     console = Console()
@@ -237,7 +236,7 @@ def print_metadata_series_long_table(
             key: dimensions[key] for key in dimensions_sort_order if key in dimensions
         }
         dimension_shape = " x ".join(
-            [f"{size}" for dimension, size in dimensions_sorted.items()]
+            [f"{size}" for _, size in dimensions_sorted.items()]
         )
 
         variables_metadata = metadata.get("Variables", {})

@@ -1,46 +1,25 @@
 from pathlib import Path
-
 import fsspec
 import kerchunk
-import typer
 import ujson
 from rich import print
 from typing_extensions import Annotated
-
 from rekx.constants import VERBOSE_LEVEL_DEFAULT
-from rekx.typer_parameters import typer_option_verbose
-
 from .progress import DisplayMode, display_context
-from .rich_help_panel_names import rich_help_panel_combine
-from .typer_parameters import (
-    OrderCommands,
-    typer_argument_kerchunk_combined_reference,
+from .typer.parameters import (
     typer_argument_source_directory,
-    typer_option_dry_run,
+    typer_argument_kerchunk_combined_reference,
     typer_option_filename_pattern,
+    typer_option_dry_run,
+    typer_option_verbose,
 )
 
-# app = typer.Typer(
-#     cls=OrderCommands,
-#     add_completion=True,
-#     add_help_option=True,
-#     rich_markup_mode="rich",
-#     help=f'Create kerchunk reference',
-# )
-
-
-# @app.command(
-#     'combine',
-#     no_args_is_help=True,
-#     help='Combine Kerchunk reference sets',
-#     rich_help_panel=rich_help_panel_combine,
-# )
 def combine_kerchunk_references(
     source_directory: Annotated[Path, typer_argument_source_directory],
     pattern: Annotated[str, typer_option_filename_pattern] = "*.json",
     combined_reference: Annotated[
         Path, typer_argument_kerchunk_combined_reference
-    ] = "combined_kerchunk.json",
+    ] = Path("combined_kerchunk.json"),
     dry_run: Annotated[bool, typer_option_dry_run] = False,
     verbose: Annotated[int, typer_option_verbose] = VERBOSE_LEVEL_DEFAULT,
 ):
@@ -81,18 +60,12 @@ def combine_kerchunk_references(
             f.write(ujson.dumps(multifile_kerchunk).encode())
 
 
-# @app.command(
-#     'combine-parquet',
-#     no_args_is_help=True,
-#     help='Combine multiple Parquet stores',
-#     rich_help_panel='Combine reference sets',
-# )
 def combine_kerchunk_references_to_parquet(
     source_directory: Annotated[Path, typer_argument_source_directory],
     pattern: Annotated[str, typer_option_filename_pattern] = "*.json",
     combined_reference: Annotated[
         Path, typer_argument_kerchunk_combined_reference
-    ] = "combined_kerchunk.parq",
+    ] = Path("combined_kerchunk.parq"),
     dry_run: Annotated[bool, typer_option_dry_run] = False,
     verbose: Annotated[int, typer_option_verbose] = VERBOSE_LEVEL_DEFAULT,
 ):
@@ -119,8 +92,6 @@ def combine_kerchunk_references_to_parquet(
 
         # Create LazyReferenceMapper to pass to MultiZarrToZarr
         filesystem = fsspec.filesystem("file")
-        import os
-
         combined_reference.mkdir(parents=True, exist_ok=True)
         from fsspec.implementations.reference import LazyReferenceMapper
 

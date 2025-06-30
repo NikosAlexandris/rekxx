@@ -5,7 +5,6 @@ and specifically diagnose and validate
 the chunking shapes of NetCDF files.
 """
 
-import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, List, Tuple

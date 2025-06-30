@@ -1,14 +1,8 @@
 import math
 from typing import Annotated, List
-
 import numpy as np
-import typer
 from pydantic import BaseModel, conlist, field_validator
-
-from rekx.typer_parameters import OrderCommands
-
-from .rich_help_panel_names import rich_help_panel_rechunking
-from .typer_parameters import typer_argument_variable_shape
+from rekx.typer.parameters import typer_argument_variable_shape
 
 
 class VariableShapeModel(BaseModel):

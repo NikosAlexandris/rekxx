@@ -2,14 +2,14 @@ from rich import print
 from typing_extensions import Annotated
 from pathlib import Path
 import typer
-from .typer_parameters import (
+from rekx.typer.parameters import (
     typer_option_dry_run,
     typer_argument_source_path_with_pattern,
     typer_option_output_directory,
     typer_option_filename_pattern,
 )
 from rekx.backend import RechunkingBackend
-from .models import XarrayVariableSet, select_xarray_variable_set_from_dataset
+from rekx.models import XarrayVariableSet, select_xarray_variable_set_from_dataset
 from rekx.constants import VERBOSE_LEVEL_DEFAULT
 
 from typing import Union
@@ -21,9 +21,9 @@ from rich import print
 from typing_extensions import Annotated
 
 from rekx.messages import NOT_IMPLEMENTED_CLI
-from rekx.typer_parameters import typer_option_verbose
+from rekx.typer.parameters import typer_option_verbose
 
-from rekx.nccopy_constants import (
+from rekx.nccopy.constants import (
     FIX_UNLIMITED_DIMENSIONS_DEFAULT,
     CACHE_SIZE_DEFAULT,
     CACHE_ELEMENTS_DEFAULT,

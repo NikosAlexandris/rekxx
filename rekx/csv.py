@@ -170,7 +170,8 @@ def to_csv(
 
 
 def _compress_func(
-    path: str, compression: str | None
+    path: Path,
+    compression: str | None,
 ) -> Callable[[bytes], bytes] | None:
     if compression == "infer":
         compression = path.suffix[1:].lower()

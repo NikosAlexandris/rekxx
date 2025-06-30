@@ -2,25 +2,26 @@ import shlex
 import subprocess
 from pathlib import Path
 from typing import Optional
-from distributed import comm
 import netCDF4 as nc
 import typer
-from .typer_parameters import (
-    typer_option_dry_run,
+from rekx.typer.parameters import (
     typer_argument_source_path_with_pattern,
     typer_option_output_directory,
     typer_option_filename_pattern,
+    typer_option_mask_and_scale,
+    typer_option_dry_run,
+    typer_option_verbose,
 )
 import xarray as xr
 from rich import print
 from typing_extensions import Annotated
 from rekx.backend import RechunkingBackend
 from rekx.constants import VERBOSE_LEVEL_DEFAULT
-from rekx.typer_parameters import typer_option_verbose
-from .log import logger
-from .models import XarrayVariableSet, select_xarray_variable_set_from_dataset, validate_variable_set
-from .typer_parameters import (
-    typer_option_dry_run,
+from rekx.log import logger
+from rekx.models import (
+    XarrayVariableSet,
+    select_xarray_variable_set_from_dataset,
+    validate_variable_set,
 )
 from dask.distributed import Client
 from functools import partial
@@ -29,7 +30,7 @@ from typing import Optional
 import typer
 import dask
 from rekx.constants import DRY_RUN_DEFAULT
-from .nccopy_constants import (
+from rekx.nccopy.constants import (
     FIX_UNLIMITED_DIMENSIONS_DEFAULT,
     CACHE_SIZE_DEFAULT,
     CACHE_ELEMENTS_DEFAULT,
@@ -150,6 +151,7 @@ def _rechunk_netcdf_file(
                 time=time,
                 latitude=latitude,
                 longitude=longitude,
+                mask_and_scale=mask_and_scale,
                 drop_other_variables=drop_other_variables,
                 fix_unlimited_dimensions=fix_unlimited_dimensions,
                 cache_size=cache_size,
@@ -220,7 +222,7 @@ def rechunk(
         ),
     ] = RechunkingBackend.xarray,
     dask_scheduler: Annotated[
-        str, typer.Option(help="The port:ip of the dask scheduler")
+        Optional[str], typer.Option(help="The port:ip of the dask scheduler")
     ] = None,
     verbose: Annotated[int, typer_option_verbose] = VERBOSE_LEVEL_DEFAULT,
 ):

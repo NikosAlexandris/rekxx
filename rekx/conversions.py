@@ -1,11 +1,5 @@
-from math import degrees, pi, radians
-from typing import Any, List
-
 import numpy as np
 import typer
-from rich import box
-from rich.progress import track
-from rich.table import Table
 
 
 def convert_to_radians(

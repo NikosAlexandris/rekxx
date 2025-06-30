@@ -9,7 +9,7 @@ from rekx.constants import (
     LONGITUDE_MAXIMUM,
     LONGITUDE_MINIMUM,
 )
-from rekx.rich_help_panel_names import (
+from rekx.typer.rich_help_panel_names import (
     rich_help_panel_advanced_options,
     rich_help_panel_output,
     rich_help_panel_select,

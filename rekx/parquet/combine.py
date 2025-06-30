@@ -14,7 +14,7 @@ from rekx.constants import (
     VERBOSE_LEVEL_DEFAULT,
 )
 from rekx.progress import DisplayMode, display_context
-from rekx.typer_parameters import (
+from rekx.typer.parameters import (
     typer_argument_kerchunk_combined_reference,
     typer_argument_source_directory,
     typer_option_filename_pattern,
@@ -262,6 +262,7 @@ def combine_parquet_stores_to_parquet(
         Path, typer_argument_kerchunk_combined_reference
     ] = "combined_kerchunk.parquet",
     record_size: int = DEFAULT_RECORD_SIZE,
+    remove_source_directory: Annotated[bool, typer.Option(help="Remove source directory of multiple single Parquet reference stores. [yellow]Convenience option[/yellow]")] = False,
     dry_run: Annotated[
         bool,
         typer.Option("--dry-run", help="Run the command without making any changes."),
@@ -281,6 +282,14 @@ def combine_parquet_stores_to_parquet(
                     dry_run=dry_run,
                     verbose=verbose,
             )
+            if verbose > 1:
+                dataset = xr.open_dataset(
+                    str(output_parquet_store),  # does not handle Path
+                    engine="kerchunk",
+                    storage_options=dict(remote_protocol="file", chunks = {})
+                    # storage_options=dict(skip_instance_cache=True, remote_protocol="file"),
+                )
+                print(dataset)
 
         # return output_parquet_store
 
@@ -290,25 +299,21 @@ def combine_parquet_stores_to_parquet(
 
             traceback.print_exc()
 
-        if verbose > 1:
-            dataset = xr.open_dataset(
-                str(output_parquet_store),  # does not handle Path
-                engine="kerchunk",
-                storage_options=dict(remote_protocol="file", chunks = {})
-                # storage_options=dict(skip_instance_cache=True, remote_protocol="file"),
-            )
-            print(dataset)
+        finally:
+            if remove_source_directory:
+                shutil.rmtree(source_directory)
 
 
 def combine_pair_wise_parquet_stores_to_parquet(
     source_directory: Annotated[Path, typer_argument_source_directory],
-    pattern: Annotated[str, typer_option_filename_pattern] = "*.parquet",
     combined_reference: Annotated[
         Path, typer_argument_kerchunk_combined_reference
     ] = "combined_kerchunk.parquet",
+    pattern: Annotated[str, typer_option_filename_pattern] = "*.parquet",
     record_size: int = DEFAULT_RECORD_SIZE,
     mode: Annotated[ str, typer.Option(help="Writing file mode")] = 'w-',
     overwrite_output: Annotated[bool, typer.Option(help="Overwrite existing output file")] = False,
+    remove_source_directory: Annotated[bool, typer.Option(help="Remove source directory of multiple single Parquet reference stores. [yellow]Convenience option[/yellow]")] = False,
     workers: Annotated[int, typer.Option(help="Number of worker processes.")] = 4,
     dry_run: Annotated[
         bool,
@@ -355,3 +360,6 @@ def combine_pair_wise_parquet_stores_to_parquet(
         print(f"file : {f}")
         shutil.rmtree(f)
     shutil.rmtree(temporary_path)
+
+    if remove_source_directory:
+        shutil.rmtree(source_directory)

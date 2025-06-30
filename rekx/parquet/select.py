@@ -17,7 +17,7 @@ from rekx.csv import to_csv
 from rekx.log import logger
 from rekx.messages import ERROR_IN_SELECTING_DATA
 from rekx.models import MethodForInexactMatches
-from rekx.typer_parameters import (
+from rekx.typer.parameters import (
     typer_argument_latitude_in_degrees,
     typer_argument_longitude_in_degrees,
     typer_argument_timestamps,

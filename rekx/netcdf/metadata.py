@@ -6,14 +6,14 @@ from typing import Annotated, List, Tuple
 from humanize import naturalsize
 from netCDF4 import Dataset
 
-from .constants import NOT_AVAILABLE, REPETITIONS_DEFAULT
-from .log import logger
-from .models import (
+from rekx.constants import NOT_AVAILABLE, REPETITIONS_DEFAULT
+from rekx.log import logger
+from rekx.models import (
     XarrayVariableSet,
     select_netcdf_variable_set_from_dataset,
 )
-from .read import read_performance
-from .typer_parameters import (
+from rekx.read import read_performance
+from rekx.typer.parameters import (
     humanize_help,
     latitude_in_degrees_help,
     longitude_in_degrees_help,

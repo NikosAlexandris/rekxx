@@ -1,4 +1,3 @@
-from functools import partial
 import multiprocessing
 from .log import logger
 from rich import print
@@ -7,7 +6,7 @@ import xarray as xr
 import typer
 from .utilities import set_location_indexers
 from typing_extensions import Annotated
-from .typer_parameters import (
+from .typer.parameters import (
     typer_argument_time_series,
     typer_argument_source_directory,
     typer_option_filename_pattern,

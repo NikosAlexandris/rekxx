@@ -7,19 +7,13 @@ from pathlib import Path
 import xarray as xr
 from xarray import Dataset
 import zarr
-# from zarr.codecs import BloscCodec
 from rich import print
-from dask.distributed import LocalCluster, Client
-from distributed import progress
 from zarr.storage import DirectoryStore  # LocalStore  # for Zarr 3
 from typing_extensions import Annotated, Optional, List
-from .typer_parameters import (
+from .typer.parameters import (
     typer_option_dry_run,
-    typer_argument_latitude_in_degrees,
-    typer_argument_longitude_in_degrees,
     typer_argument_time_series,
     typer_argument_variable,
-    typer_option_repetitions,
     typer_option_tolerance,
     typer_option_verbose,
 )
@@ -27,16 +21,9 @@ from .constants import VERBOSE_LEVEL_DEFAULT
 from .drop import drop_other_data_variables
 
 DASK_SCHEDULER_IP = 'localhost'
-DASK_SCHEDULER_PORT = '8888'
+DASK_SCHEDULER_PORT = '8787'
 DASK_COMPUTE = True
-NUMBER_OF_WORKERS = 36
 
-XARRAY_OPEN_DATA_COMBINE = "nested"
-XARRAY_OPEN_DATA_CONCATENATE_DIMENSION = "time"
-XARRAY_OPEN_DATA_ENGINE = "h5netcdf"
-XARRAY_OPEN_DATA_IN_PARALLEL = True
-
-ZARR_STORE_BASE_PATH = Path("sis_italia")
 ZARR_CONSOLIDATE = True
 ZARR_COMPRESSOR_CODEC = "zstd"
 COMPRESSION_FILTER_DEFAULT = ZARR_COMPRESSOR_CODEC
@@ -44,57 +31,13 @@ ZARR_COMPRESSOR_LEVEL = 1
 COMPRESSION_LEVEL_DEFAULT = ZARR_COMPRESSOR_LEVEL
 ZARR_COMPRESSOR_SHUFFLE = "shuffle"
 SHUFFLING_DEFAULT = ZARR_COMPRESSOR_SHUFFLE
-# ZARR_COMPRESSOR = zarr.codecs.BloscCodec(
-# ZARR_COMPRESSOR = BloscCodec(
 ZARR_COMPRESSOR = zarr.blosc.Blosc(
     cname=ZARR_COMPRESSOR_CODEC,
     clevel=ZARR_COMPRESSOR_LEVEL,
     shuffle=ZARR_COMPRESSOR_SHUFFLE,
 )
-
-NETCDF_FILENAME_PREFIX = 'SISin*'
-NETCDF_COMPRESSOR_CODEC = 'zlib'
-NETCDF_COMPRESSOR_LEVEL = 0
-NETCDF_FILENAME_SUFFIX = f"{NETCDF_COMPRESSOR_CODEC}_{NETCDF_COMPRESSOR_LEVEL}"
-NETCDF_FILENAME_EXTENSION = 'nc'
-
 DATASET_SELECT_TOLERANCE_DEFAULT = 0.1
-
-CHUNKING_SHAPES = [
-    #(48, 2, 2),
-    #(48, 4, 4),
-    #(48, 8, 8),
-    #(48, 16, 16),
-    #(48, 32, 32),
-    (48, 64, 64),
-    (48, 128, 128)
-]
 GREEN_DASH = f"[green]-[/green]"
-
-
-# Add this before generating the Zarr store
-def apply_safe_chunking(dataset, main_variable, time_chunks, lat_chunks, lon_chunks):
-    for var in dataset.variables:
-        # Skip primary variable (handled separately)
-        if var == main_variable:
-            continue
-            
-        # Clear problematic encoding
-        if 'chunks' in dataset[var].encoding:
-            del dataset[var].encoding['chunks']
-        if 'compressor' in dataset[var].encoding:
-            del dataset[var].encoding['compressor']
-            
-        # Apply safe chunking to auxiliary variables
-        if var in ['lat', 'lon']:
-            dataset[var] = dataset[var].chunk({
-                'time': time_chunks,
-                'lat': lat_chunks,
-                'lon': lon_chunks,
-                # 'bnds': 2  # Explicit chunk for bounds dimension
-            })
-    
-    return dataset
 
 
 def read_parquet_via_zarr(
@@ -106,7 +49,7 @@ def read_parquet_via_zarr(
     tolerance: Annotated[
         Optional[float], typer_option_tolerance
     ] = DATASET_SELECT_TOLERANCE_DEFAULT,
-) -> None:
+) -> Dataset:
     """
     Read a time series data file via Xarray's Zarr engine
     format.

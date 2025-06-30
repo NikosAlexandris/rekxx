@@ -2,7 +2,7 @@ from contextlib import nullcontext
 from enum import Enum
 
 from rich.console import Console
-from rich.progress import BarColumn, Progress, TaskID, TextColumn, TimeRemainingColumn
+from rich.progress import BarColumn, Progress, TextColumn, TimeRemainingColumn
 
 
 class DisplayMode(Enum):

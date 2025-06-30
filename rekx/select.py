@@ -13,14 +13,14 @@ from rekx.constants import (
     VERBOSE_LEVEL_DEFAULT,
 )
 from rekx.models import MethodForInexactMatches
-from .constants import VERBOSE_LEVEL_DEFAULT
-from .csv import to_csv
-from .hardcodings import exclamation_mark
-from .log import logger
-from .messages import ERROR_IN_SELECTING_DATA
-from .statistics import print_series_statistics
-from .write import write_to_netcdf
-from .typer_parameters import (
+from rekx.constants import VERBOSE_LEVEL_DEFAULT
+from rekx.csv import to_csv
+from rekx.hardcodings import exclamation_mark
+from rekx.log import logger
+from rekx.messages import ERROR_IN_SELECTING_DATA
+from rekx.statistics import print_series_statistics
+from rekx.write import write_to_netcdf
+from rekx.typer.parameters import (
     typer_argument_latitude_in_degrees,
     typer_argument_longitude_in_degrees,
     typer_argument_time_series,
@@ -369,6 +369,7 @@ def select_time_series(
     if statistics:  # after echoing series which might be Long!
         print_series_statistics(
             data_array=location_time_series,
+            timestamps=timestamps,
             title="Selected series",
         )
     output_handlers = {

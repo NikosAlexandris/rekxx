@@ -1,24 +1,19 @@
 import json
 from pathlib import Path
-from typing import List
 
 import typer
-import xarray as xr
 from rich import print
 from typing_extensions import Annotated
 
 from rekx.constants import VERBOSE_LEVEL_DEFAULT
 from rekx.hardcodings import check_mark
-from rekx.messages import NOT_IMPLEMENTED_CLI
-from rekx.typer_parameters import (
-    OrderCommands,
+from rekx.typer.parameters import (
     typer_argument_source_directory,
     typer_option_filename_pattern,
     typer_option_verbose,
 )
 
 from .log import logger
-from .models import XarrayVariableSet
 from .progress import DisplayMode, display_context
 
 
@@ -62,11 +57,6 @@ def compare_chunk_sizes_json(
         return True
 
 
-# @app.command(
-#     'consistency-json',
-#     no_args_is_help=True,
-#     help='Check for chunk size consistency along series of kerchunk reference files',
-# )
 def check_chunk_consistency_json(
     source_directory: Annotated[Path, typer_argument_source_directory],
     variable: Annotated[str, typer.Argument(help="Variable name to select from")],

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 from rich import print
@@ -17,8 +17,8 @@ from .print import (
     print_chunking_shapes_consistency_validation_long_table,
     print_common_chunk_layouts,
 )
-from .progress import DisplayMode, display_context
-from .typer_parameters import (
+from rekx.progress import DisplayMode, display_context
+from rekx.typer.parameters import (
     typer_argument_source_directory,
     typer_option_csv,
     typer_option_filename_pattern,
@@ -36,7 +36,7 @@ def diagnose_chunking_shapes(
     common_shapes: Annotated[
         bool, typer.Option(help="Report common maximum chunking shape")
     ] = False,
-    csv: Annotated[Path, typer_option_csv] = None,
+    csv: Annotated[Optional[Path], typer_option_csv] = None,
     verbose: Annotated[int, typer_option_verbose] = VERBOSE_LEVEL_DEFAULT,
 ):
     """Diagnose the chunking shapes of multiple Xarray-supported files.

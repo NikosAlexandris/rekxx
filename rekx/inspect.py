@@ -1,15 +1,12 @@
 from pathlib import Path
-from typing import Annotated, Dict, List, Optional, Tuple
-
+from typing import Annotated, Optional
 import typer
-
-from .constants import REPETITIONS_DEFAULT, VERBOSE_LEVEL_DEFAULT
-from .csv import write_metadata_dictionary_to_csv, write_nested_dictionary_to_csv
-from .models import XarrayVariableSet
-from .netcdf_metadata import get_multiple_netcdf_metadata, get_netcdf_metadata
-from .progress import DisplayMode, display_context
-from .typer_parameters import (
-    OrderCommands,
+from rekx.constants import REPETITIONS_DEFAULT, VERBOSE_LEVEL_DEFAULT
+from rekx.csv import write_metadata_dictionary_to_csv, write_nested_dictionary_to_csv
+from rekx.models import XarrayVariableSet
+from rekx.netcdf.metadata import get_multiple_netcdf_metadata, get_netcdf_metadata
+from rekx.progress import DisplayMode, display_context
+from rekx.typer.parameters import (
     typer_argument_source_path,
     typer_argument_latitude_in_degrees,
     typer_argument_longitude_in_degrees,
@@ -22,9 +19,9 @@ from .typer_parameters import (
 
 
 def inspect_netcdf_data(
-    input_path: Annotated[Path, typer_argument_source_path] = ".",
+    input_path: Annotated[Path, typer_argument_source_path] = Path("."),
     pattern: Annotated[str, typer_option_filename_pattern] = "*.nc",
-    variable: str = None,
+    variable: str | None = None,
     variable_set: Annotated[
         XarrayVariableSet, typer.Option(help="Set of Xarray variables to diagnose")
     ] = XarrayVariableSet.all,
@@ -33,14 +30,14 @@ def inspect_netcdf_data(
         "Group rows of metadata per input NetCDF file and variable in a long table",
     ] = True,
     group_metadata: Annotated[
-        Optional[bool],
+        bool,
         "Visually cluster rows of metadata per input NetCDF file and variable",
     ] = False,
     longitude: Annotated[float, typer_argument_longitude_in_degrees] = 8,
     latitude: Annotated[float, typer_argument_latitude_in_degrees] = 45,
     repetitions: Annotated[int, typer_option_repetitions] = REPETITIONS_DEFAULT,
     humanize: Annotated[bool, typer_option_humanize] = False,
-    csv: Annotated[Path, typer_option_csv] = None,
+    csv: Annotated[Optional[Path], typer_option_csv] = None,
     verbose: Annotated[int, typer_option_verbose] = VERBOSE_LEVEL_DEFAULT,
 ) -> None:
     """Collect the metadata of a single or multiple NetCDF files.

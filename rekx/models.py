@@ -141,7 +141,9 @@ def select_xarray_variable_set_from_dataset(
     # return selected_variables
 
 
-def validate_variable_set(variable_set_input: list[str]) -> list[XarrayVariableSet]:
+def validate_variable_set(
+    variable_set_input: List[enum.Enum],
+) -> list[XarrayVariableSet]:
     if not variable_set_input:
         # Use a sensible default or raise
         return [XarrayVariableSet.all]

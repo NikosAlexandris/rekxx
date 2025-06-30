@@ -6,7 +6,7 @@ from rekx.constants import (
     REPETITIONS_DEFAULT,
     VERBOSE_LEVEL_DEFAULT,
 )
-from .typer_parameters import (
+from rekx.typer.parameters import (
     typer_argument_latitude_in_degrees,
     typer_argument_longitude_in_degrees,
     typer_argument_time_series,
@@ -22,7 +22,7 @@ from statistics import median
 
 
 def read_performance(
-    time_series: str,
+    time_series: Path,
     variable: str,
     longitude: float,
     latitude: float,

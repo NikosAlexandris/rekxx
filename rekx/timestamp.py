@@ -1,13 +1,8 @@
 from datetime import datetime
 from typing import List, Optional, Union
-
 import numpy as np
 import typer
-from rich import print
-
 from rekx.constants import TIMESTAMPS_FREQUENCY_DEFAULT
-
-# Time series
 
 
 def parse_timestamp_series(
@@ -72,7 +67,7 @@ def callback_generate_datetime_series(
     start_time = ctx.params.get("start_time")
     end_time = ctx.params.get("end_time")
     frequency = ctx.params.get("frequency", "h")
-    timezone = ctx.params.get("timezone")
+    # timezone = ctx.params.get("timezone")
 
     if start_time is not None and end_time is not None:
         timestamps = generate_datetime_series(start_time, end_time, frequency)
@@ -80,4 +75,3 @@ def callback_generate_datetime_series(
     from pandas import to_datetime
 
     return to_datetime(timestamps, format="mixed")
-    return timestamps

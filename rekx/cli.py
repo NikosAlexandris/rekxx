@@ -22,7 +22,7 @@ from .parquet.reference import (
     parquet_multi_reference,
 )
 from .parquet.select import select_from_parquet
-from .nccopy import (
+from .nccopy.rechunk import (
     generate_rechunk_commands_for_multiple_netcdf,
 )
 from .rechunk import (
@@ -31,7 +31,7 @@ from .rechunk import (
     rechunk_netcdf_files,
 )
 from .reference import create_kerchunk_reference
-from .rich_help_panel_names import (
+from .typer.rich_help_panel_names import (
     rich_help_panel_combine,
     rich_help_panel_diagnose,
     rich_help_panel_read_performance,
@@ -54,7 +54,7 @@ from .suggest import (
     suggest_chunking_shape_alternative,
     suggest_chunking_shape_alternative_symmetrical,
 )
-from .typer_parameters import OrderCommands, typer_option_log, typer_option_version
+from .typer.parameters import OrderCommands, typer_option_log, typer_option_version
 
 typer.rich_utils.Panel = Panel.fit
 app = typer.Typer(

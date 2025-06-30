@@ -9,7 +9,7 @@ from rekx.constants import (
     DEFAULT_RECORD_SIZE,
     VERBOSE_LEVEL_DEFAULT,
 )
-from rekx.typer_parameters import (
+from rekx.typer.parameters import (
     typer_option_dry_run,
     typer_option_verbose,
 )
