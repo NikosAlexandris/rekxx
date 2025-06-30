@@ -254,7 +254,10 @@ def rechunk_netcdf_via_xarray(
 
     for variable in dataset.data_vars:
         dimensions = dataset[variable].dims
+        dtype = dataset[variable].dtype
+        fill_value = dataset[variable].encoding['_FillValue']
         chunk_sizes = []
+
         for dimension in dimensions:
             if dimension == "time":
                 if not time:
@@ -266,9 +269,26 @@ def rechunk_netcdf_via_xarray(
                 chunk_sizes.append(longitude)
             else:
                 chunk_sizes.append(dataset.sizes[dimension])
-        encoding[variable] = {"chunksizes": tuple(chunk_sizes)}
 
-    # print(f"Encoding for new Dataset : {encoding}")
+        # Define (Zarr v3) encoding
+        encoding[variable] = {
+            # "endian",
+            # "szip_coding",
+            "contiguous": False,
+            # "blosc_shuffle",
+            "shuffle": shuffling,
+            # "least_significant_digit",
+            # "quantize_mode",
+            # "zlib",
+            "dtype": dtype,
+            # "significant_digits",
+            '_FillValue': fill_value,
+            # "szip_pixels_per_block",
+            # "fletcher32",
+            "chunksizes": tuple(chunk_sizes),
+            "compression": compression,
+            "complevel": compression_level,
+        }
 
     # Write chunked data as a NetCDF file
     if overwrite_output:
