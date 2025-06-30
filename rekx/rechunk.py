@@ -115,6 +115,7 @@ def _rechunk_netcdf_file(
     longitude: int,
     fix_unlimited_dimensions: bool = FIX_UNLIMITED_DIMENSIONS_DEFAULT,
     variable_set: list[XarrayVariableSet] = list[XarrayVariableSet.all],
+    mask_and_scale: bool = False,
     drop_other_variables: bool = True,
     cache_size: int | None = CACHE_SIZE_DEFAULT,
     cache_elements: int | None = CACHE_ELEMENTS_DEFAULT,
@@ -330,6 +331,7 @@ def rechunk_netcdf_files(
     variable_set: Annotated[
         list[XarrayVariableSet], typer.Option(help="Set of Xarray variables to diagnose")
     ] = list[XarrayVariableSet.all],
+    mask_and_scale: Annotated[bool, typer_option_mask_and_scale] = False,
     drop_other_variables: Annotated[bool, typer.Option(help="Drop variables other than the main one. [yellow bold]Attention, presets are the author's best guess![/yellow bold]")] = True,
     cache_size: Optional[int] = CACHE_SIZE_DEFAULT,
     cache_elements: Optional[int] = CACHE_ELEMENTS_DEFAULT,
@@ -416,6 +418,7 @@ def rechunk_netcdf_files(
         longitude=longitude,
         fix_unlimited_dimensions=fix_unlimited_dimensions,
         variable_set=variable_set,
+        mask_and_scale=mask_and_scale,
         drop_other_variables=drop_other_variables,
         cache_size=cache_size,
         cache_elements=cache_elements,
