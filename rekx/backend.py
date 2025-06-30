@@ -5,18 +5,18 @@ from typing_extensions import List
 
 from rekx.constants import VERBOSE_LEVEL_DEFAULT
 from rekx.drop import drop_other_data_variables
-from .log import logger
+from rekx.log import logger
 
-FIX_UNLIMITED_DIMENSIONS_DEFAULT = False
-CACHE_SIZE_DEFAULT = 16777216
-CACHE_ELEMENTS_DEFAULT = 4133
-CACHE_PREEMPTION_DEFAULT = 0.75
-COMPRESSION_FILTER_DEFAULT = "zlib"
-COMPRESSION_LEVEL_DEFAULT = 4
-SHUFFLING_DEFAULT = None
-RECHUNK_IN_MEMORY_DEFAULT = False
-DRY_RUN_DEFAULT = True
-SPATIAL_SYMMETRY_DEFAULT = True
+from rekx.nccopy_constants import (
+    FIX_UNLIMITED_DIMENSIONS_DEFAULT,
+    CACHE_SIZE_DEFAULT,
+    CACHE_ELEMENTS_DEFAULT,
+    CACHE_PREEMPTION_DEFAULT,
+    COMPRESSION_FILTER_DEFAULT,
+    COMPRESSION_LEVEL_DEFAULT,
+    SHUFFLING_DEFAULT,
+    RECHUNK_IN_MEMORY_DEFAULT,
+)
 
 
 class RechunkingBackendBase(ABC):
@@ -34,13 +34,13 @@ class nccopyBackend(RechunkingBackendBase):
         time: int | None = None,
         latitude: int | None = None,
         longitude: int | None = None,
-        fix_unlimited_dimensions: bool = False,
+        fix_unlimited_dimensions: bool = FIX_UNLIMITED_DIMENSIONS_DEFAULT,
         cache_size: int | None = CACHE_SIZE_DEFAULT,
         cache_elements: int | None = CACHE_ELEMENTS_DEFAULT,
         cache_preemption: float | None = CACHE_PREEMPTION_DEFAULT,
         compression: str = COMPRESSION_FILTER_DEFAULT,
         compression_level: int = COMPRESSION_LEVEL_DEFAULT,
-        shuffling: bool = SHUFFLING_DEFAULT,
+        shuffling: bool | None = SHUFFLING_DEFAULT,
         memory: bool = RECHUNK_IN_MEMORY_DEFAULT,
         dry_run: bool = False,  # return command as a string ?
     ):  # **kwargs):
@@ -209,9 +209,9 @@ def rechunk_netcdf_via_xarray(
     mode: str = 'w-',
     overwrite_output: bool = False,
     encoding: dict = {},
-    unlimited_dimensions: list = ['time'],
+    # unlimited_dimensions: list = ['time'],
     compute: bool = True,
-    engine: str = "h5netcdf",
+    engine: str = "netcdf4",
 ) -> None:
     """
     Rechunk a NetCDF dataset and save it to a new file.
@@ -249,7 +249,7 @@ def rechunk_netcdf_via_xarray(
     for variable in dataset.variables:
         dataset[variable].encoding = {}  # Critical step!
 
-    # Define Zarr v3 encoding
+    # Initialise encoding
     encoding = {}
 
     for variable in dataset.data_vars:
@@ -258,7 +258,7 @@ def rechunk_netcdf_via_xarray(
         for dimension in dimensions:
             if dimension == "time":
                 if not time:
-                    time=dataset.sizes['time']
+                    time = dataset.sizes['time']
                 chunk_sizes.append(time)
             elif dimension == "lat":
                 chunk_sizes.append(latitude)
@@ -273,6 +273,11 @@ def rechunk_netcdf_via_xarray(
     # Write chunked data as a NetCDF file
     if overwrite_output:
         mode = "w"
+
+    if fix_unlimited_dimensions:
+        unlimited_dimensions = []
+    else:
+        unlimited_dimensions = ['time']
 
     dataset.to_netcdf(
         path=output_filepath,
@@ -297,23 +302,23 @@ class XarrayBackend(RechunkingBackendBase):
         longitude: int = None,
         drop_other_variables: bool = True,
         fix_unlimited_dimensions: bool = False,
-        cache_size: int = CACHE_SIZE_DEFAULT,
-        cache_elements: int = CACHE_ELEMENTS_DEFAULT,
-        cache_preemption: float = CACHE_PREEMPTION_DEFAULT,
+        # cache_size: int = CACHE_SIZE_DEFAULT,
+        # cache_elements: int = CACHE_ELEMENTS_DEFAULT,
+        # cache_preemption: float = CACHE_PREEMPTION_DEFAULT,
         compression: str = COMPRESSION_FILTER_DEFAULT,
         compression_level: int = COMPRESSION_LEVEL_DEFAULT,
-        shuffling: bool = SHUFFLING_DEFAULT,
-        memory: bool = RECHUNK_IN_MEMORY_DEFAULT,
+        shuffling: bool | None = SHUFFLING_DEFAULT,
+        # memory: bool = RECHUNK_IN_MEMORY_DEFAULT,
         mode: str = 'w-',
         overwrite_output: bool = False,
-        engine: str = 'h5netcdf',
+        engine: str = 'netcdf4',
         dry_run: bool = False,
         verbose: int = VERBOSE_LEVEL_DEFAULT, 
         **kwargs
     ):
         """
         """
-        message = f"\nRechunk via Xarray\n   - from {input_filepath}\n   - to {output_filepath}\n   - with chunks (time={time}, lat={latitude}, lon={longitude})"
+        message = f"Rechunk via Xarray\n   - from {input_filepath}\n   - to {output_filepath}\n   - with chunks (time={time}, lat={latitude}, lon={longitude})"
         if not dry_run:
             rechunk_netcdf_via_xarray(
                 input_filepath=input_filepath,

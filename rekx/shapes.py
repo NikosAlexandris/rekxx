@@ -70,6 +70,7 @@ def diagnose_chunking_shapes(
             f"[red]The directory [code]{source_directory}[/code] does not exist or is empty[/red]."
         )
         return
+
     file_paths = list(source_directory.glob(pattern))
     if not file_paths:
         print(
@@ -127,9 +128,9 @@ def diagnose_chunking_shapes(
     if csv:
         write_nested_dictionary_to_csv(
             # nested_dictionary=chunking_shapes,
-            nested_dictionary=chunking_shapes
-            if not common_shapes
-            else common_chunking_shapes,
+            nested_dictionary=(
+                chunking_shapes if not common_shapes else common_chunking_shapes
+            ),
             output_filename=csv,
         )
 

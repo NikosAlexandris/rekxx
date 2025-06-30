@@ -23,8 +23,7 @@ from typing_extensions import Annotated
 from rekx.messages import NOT_IMPLEMENTED_CLI
 from rekx.typer_parameters import typer_option_verbose
 
-
-from .nccopy_constants import (
+from rekx.nccopy_constants import (
     FIX_UNLIMITED_DIMENSIONS_DEFAULT,
     CACHE_SIZE_DEFAULT,
     CACHE_ELEMENTS_DEFAULT,

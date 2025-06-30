@@ -14,12 +14,13 @@ from .log import logger
 from .models import (
     XarrayVariableSet,
     select_xarray_variable_set_from_dataset,
+    validate_variable_set,
 )
 
 
 def detect_chunking_shapes(
     file_path: Path,
-    variable_set: XarrayVariableSet = XarrayVariableSet.all,
+    variable_set: list[XarrayVariableSet] = [XarrayVariableSet.all],
     # ) -> Tuple[Dict[str, Set[int]], str]:
 ) -> Tuple[Dict, str]:
     """
@@ -54,6 +55,7 @@ def detect_chunking_shapes(
 
     chunking_shapes = {}
     with xr.open_dataset(file_path, engine="netcdf4") as dataset:
+        variable_set = validate_variable_set(variable_set)
         selected_variables = select_xarray_variable_set_from_dataset(
             XarrayVariableSet, variable_set, dataset
         )
@@ -76,7 +78,7 @@ def detect_chunking_shapes(
 
 def detect_chunking_shapes_parallel(
     file_paths: List[Path],
-    variable_set: list = [XarrayVariableSet.all],
+    variable_set: list[XarrayVariableSet] = list[XarrayVariableSet.all],
 ) -> dict:
     """
     Detect and aggregate the chunking shapes of variables within a set of

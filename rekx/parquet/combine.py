@@ -8,7 +8,7 @@ from fsspec.implementations.reference import LazyReferenceMapper
 from kerchunk.combine import MultiZarrToZarr
 from rich import print
 from typing_extensions import Annotated
-from rekx.backend import DRY_RUN_DEFAULT
+from rekx.constants import DRY_RUN_DEFAULT
 from rekx.constants import (
     DEFAULT_RECORD_SIZE,
     VERBOSE_LEVEL_DEFAULT,

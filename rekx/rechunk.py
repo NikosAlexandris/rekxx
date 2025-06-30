@@ -1,8 +1,8 @@
-from rich import print
 import shlex
 import subprocess
 from pathlib import Path
 from typing import Optional
+from distributed import comm
 import netCDF4 as nc
 import typer
 from .typer_parameters import (
@@ -28,8 +28,7 @@ from pathlib import Path
 from typing import Optional
 import typer
 import dask
-
-
+from rekx.constants import DRY_RUN_DEFAULT
 from .nccopy_constants import (
     FIX_UNLIMITED_DIMENSIONS_DEFAULT,
     CACHE_SIZE_DEFAULT,
@@ -39,7 +38,6 @@ from .nccopy_constants import (
     COMPRESSION_LEVEL_DEFAULT,
     SHUFFLING_DEFAULT,
     RECHUNK_IN_MEMORY_DEFAULT,
-    DRY_RUN_DEFAULT,
 )
 
 
@@ -129,7 +127,7 @@ def _rechunk_netcdf_file(
     overwrite_output: bool = False,
     dry_run: bool = DRY_RUN_DEFAULT,
     backend: RechunkingBackend = RechunkingBackend.xarray,
-    dask_scheduler: str | None = None,
+    # dask_scheduler: str | None = None,
     verbose: int = VERBOSE_LEVEL_DEFAULT,
 ):
     """
@@ -162,7 +160,7 @@ def _rechunk_netcdf_file(
                 memory=memory,
                 mode=mode,
                 overwrite_output=overwrite_output,
-                dry_run=dry_run,  # = True : just return the command!
+                dry_run=dry_run,
                 verbose=verbose,
             )
 
@@ -177,6 +175,7 @@ def _rechunk_netcdf_file(
                 except subprocess.CalledProcessError as e:
                     print(f"An error occurred while executing the command: {e}")
 
+            # if backend_name == RechunkingBackend.xarray.name:
             else:
                 return command
                 # logger.info(f"Rechunking completed: {command}")
@@ -241,17 +240,17 @@ def rechunk(
     try:
         with xr.open_dataset(input_filepath, engine="h5netcdf") as dataset:
 
-            def validate_variable_set(variable_set_input: list[str]) -> list[XarrayVariableSet]:
-                if not variable_set_input:
-                    # Use a sensible default or raise
-                    return [XarrayVariableSet.all]
-                validated = []
-                for v in variable_set_input:
-                    if v in XarrayVariableSet.__members__:
-                        validated.append(XarrayVariableSet[v])
-                    else:
-                        raise ValueError(f"Invalid variable set: {v}")
-                return validated
+            # def validate_variable_set(variable_set_input: list[str]) -> list[XarrayVariableSet]:
+            #     if not variable_set_input:
+            #         # Use a sensible default or raise
+            #         return [XarrayVariableSet.all]
+            #     validated = []
+            #     for v in variable_set_input:
+            #         if v in XarrayVariableSet.__members__:
+            #             validated.append(XarrayVariableSet[v])
+            #         else:
+            #             raise ValueError(f"Invalid variable set: {v}")
+            #     return validated
 
             variable_set = validate_variable_set(variable_set)
             selected_variables = select_xarray_variable_set_from_dataset(
@@ -345,7 +344,7 @@ def rechunk_netcdf_files(
             help="Backend to use for rechunking. [code]nccopy[/code] [red]Not Implemented Yet![/red]"
         ),
     ] = RechunkingBackend.xarray,
-    mode: Annotated[ str, typer.Option(help="Writing file mode")] = 'w-',
+    mode: Annotated[ str, typer.Option(help="Writing file mode")] = 'w',
     overwrite_output: Annotated[bool, typer.Option(help="Overwrite existing output file")] = False,
     workers: Annotated[int, typer.Option(help="Number of worker processes.")] = 4,
     memory_limit: str = "4GB",
@@ -357,6 +356,7 @@ def rechunk_netcdf_files(
         import time as timer
 
         rechunking_timer_start = timer.time()
+
     # Resolve input files
     if source_path.is_file():
         input_file_paths = [source_path]
@@ -444,7 +444,7 @@ def rechunk_netcdf_files(
         # Print command immediately if verbose
         if verbose:
             # Get command without executing (dry-run=True)
-            cmd = _rechunk_netcdf_file(
+            command = _rechunk_netcdf_file(
                 in_file,
                 out_file, 
                 time=time,
@@ -461,21 +461,20 @@ def rechunk_netcdf_files(
                 memory=memory,
                 mode=mode,
                 overwrite_output=overwrite_output,
-                dry_run=True,  # just return the command !
+                dry_run=dry_run,  # just return the command !
                 backend=backend,
                 verbose=verbose,
             )
-            print(f"  [green]>[/green] [code dim]{cmd}[/code dim]")
+            print(f"[green]>[/green] {command}")
+            # print(f"  [green]>[/green] [code dim]{cmd}[/code dim]")
 
 
     if not dry_run:
         dask.compute(*tasks)
 
         if verbose:
-            print(f"[bold green]Rechunking operations complete.[/bold green]")
-
-        if verbose:
+            print(f"[bold green]Rechunking operations [code]{backend.name}[/code] complete.[/bold green]")
             rechunking_timer_end = timer.time()
             elapsed_time = rechunking_timer_end - rechunking_timer_start
             logger.info(f"Rechunking via {backend} took {elapsed_time:.2f} seconds")
-            print(f"Rechunking via [code]{backend.name}[/code] took {elapsed_time:.2f} seconds.")
+            print(f"Elapsed time {elapsed_time:.2f} seconds.")
