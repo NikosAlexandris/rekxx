@@ -2,7 +2,7 @@ import enum
 from pathlib import Path
 
 # from enum import Enum
-from typing import List, Type
+from typing import List, Type, Set
 
 import netCDF4
 import xarray as xr
@@ -36,7 +36,7 @@ def select_xarray_variable_set_from_dataset(
     xarray_variable_set: Type[enum.Enum],
     variable_set: list[enum.Enum],
     dataset: xr.Dataset,
-):
+) -> Set[str]:
     """
     Select user-requested set of variables from an Xarray dataset.
 
@@ -54,11 +54,11 @@ def select_xarray_variable_set_from_dataset(
 
     Returns
     -------
-
+    Set[str]
+        Selected variable names
 
     Examples
     --------
-
 
     Notes
     -----
@@ -66,37 +66,50 @@ def select_xarray_variable_set_from_dataset(
     select_netcdf_variable_set_from_dataset() with differences in terms of the
     names of attributes. See also docstring of other function.
     """
-    variables = set(dataset.variables)
-    dimensions = set(dataset.dims)
-    coordinates = set(dataset.coords)
-    dimensions_without_coordinates = dimensions.difference(coordinates) 
-    time_coordinate = {dataset.time.name}
-    latitude_coordinate = {dataset.lat.name}
-    longitude_coordinate = {dataset.lon.name}
-    location_coordinates = latitude_coordinate.union(longitude_coordinate)
-    data_variables = set(dataset.data_vars)
-    data_variables_latitude_boundaries = {dataset.lat_bnds.name}
-    data_variables_longitude_boundaries = {dataset.lon_bnds.name}
-    data_variables_location_boundaries = data_variables_latitude_boundaries.union(data_variables_longitude_boundaries)
-    data_variables_metadata = {"record_status"}  # Hardcoded !
-    data = data_variables - data_variables_location_boundaries - data_variables_metadata
-    selection_map = {
-        xarray_variable_set.all: variables,
-        xarray_variable_set.dimensions: dimensions,
-        xarray_variable_set.dimensions_without_coordinates: dimensions_without_coordinates,
-        xarray_variable_set.coordinates: coordinates,
-        xarray_variable_set.time: time_coordinate,
-        xarray_variable_set.latitude: latitude_coordinate,
-        xarray_variable_set.longitude: longitude_coordinate,
-        xarray_variable_set.location: location_coordinates,
-        xarray_variable_set.data_variables: data_variables,
-        xarray_variable_set.latitude_boundaries: data_variables_latitude_boundaries,
-        xarray_variable_set.longitude_boundaries: data_variables_longitude_boundaries,
-        xarray_variable_set.location_boundaries: data_variables_location_boundaries,
-        xarray_variable_set.data: data,
-        xarray_variable_set.metadata: data_variables_metadata,
-    }
-    selected_variables = set()
+    try:
+        # Core sets, _should_ always exist
+        variables = set(dataset.variables)
+        dimensions = set(dataset.dims)
+        coordinates = set(dataset.coords)
+        data_variables = set(dataset.data_vars)
+
+        dimensions_without_coordinates = dimensions.difference(coordinates) 
+        time_coordinate = {dataset.time.name}
+        latitude_coordinate = {dataset.lat.name}
+        longitude_coordinate = {dataset.lon.name}
+        location_coordinates = latitude_coordinate.union(longitude_coordinate)
+
+        # Boundary variables (may not exist)
+        lat_bnds = getattr(dataset, 'lat_bnds', None)
+        lon_bnds = getattr(dataset, 'lon_bnds', None)
+        data_variables_latitude_boundaries = {lat_bnds.name} if lat_bnds is not None else set()
+        data_variables_longitude_boundaries = {lon_bnds.name} if lon_bnds is not None else set()
+        data_variables_location_boundaries = data_variables_latitude_boundaries.union(data_variables_longitude_boundaries)
+
+        # Metadata handling
+        data_variables_metadata = {"record_status"} if "record_status" in variables else set()
+        data = data_variables - data_variables_location_boundaries - data_variables_metadata
+
+        # Map enum members to variable sets
+        selection_map = {
+            xarray_variable_set.all: variables,
+            xarray_variable_set.dimensions: dimensions,
+            xarray_variable_set.dimensions_without_coordinates: dimensions_without_coordinates,
+            xarray_variable_set.coordinates: coordinates,
+            xarray_variable_set.time: time_coordinate,
+            xarray_variable_set.latitude: latitude_coordinate,
+            xarray_variable_set.longitude: longitude_coordinate,
+            xarray_variable_set.location: location_coordinates,
+            xarray_variable_set.data_variables: data_variables,
+            xarray_variable_set.latitude_boundaries: data_variables_latitude_boundaries,
+            xarray_variable_set.longitude_boundaries: data_variables_longitude_boundaries,
+            xarray_variable_set.location_boundaries: data_variables_location_boundaries,
+            xarray_variable_set.data: data,
+            xarray_variable_set.metadata: data_variables_metadata,
+        }
+    except Exception as e:
+        raise ValueError(f"Error processing dataset: {str(e)}")
+
 
     # Convert any strings to enum members (case-insensitive)
     enum_set = set()
@@ -112,6 +125,8 @@ def select_xarray_variable_set_from_dataset(
         else:
             raise TypeError(f"Invalid type for variable set: {type(v)}")
 
+    # Collect selected variables
+    selected_variables = set()
     for enum_member in enum_set:
         selected_variables.update(selection_map.get(enum_member, set()))
 
@@ -136,6 +151,7 @@ def validate_variable_set(variable_set_input: list[str]) -> list[XarrayVariableS
             validated.append(XarrayVariableSet[v])
         else:
             raise ValueError(f"Invalid variable set: {v}")
+
     return validated
 
 
