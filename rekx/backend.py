@@ -206,6 +206,14 @@ def rechunk_netcdf_via_xarray(
     latitude: int,
     longitude: int,
     drop_other_variables: bool = True,
+    fix_unlimited_dimensions: bool = False,
+    # cache_size: int = CACHE_SIZE_DEFAULT,
+    # cache_elements: int = CACHE_ELEMENTS_DEFAULT,
+    # cache_preemption: float = CACHE_PREEMPTION_DEFAULT,
+    compression: str = COMPRESSION_FILTER_DEFAULT,
+    compression_level: int = COMPRESSION_LEVEL_DEFAULT,
+    shuffling: bool | None = SHUFFLING_DEFAULT,
+    # memory: bool = RECHUNK_IN_MEMORY_DEFAULT,
     mode: str = 'w-',
     overwrite_output: bool = False,
     encoding: dict = {},
@@ -246,8 +254,7 @@ def rechunk_netcdf_via_xarray(
         dataset = drop_other_data_variables(dataset)
 
     # Reset legacy encoding
-    for variable in dataset.variables:
-        dataset[variable].encoding = {}  # Critical step!
+    dataset.drop_encoding()
 
     # Initialise encoding
     encoding = {}
@@ -347,6 +354,16 @@ class XarrayBackend(RechunkingBackendBase):
                 latitude=latitude,
                 longitude=longitude,
                 drop_other_variables=drop_other_variables,
+                fix_unlimited_dimensions=fix_unlimited_dimensions,
+                # spatial_symmetry=spatial_symmetry,
+                # variable_set=variable_set,
+                # cache_size=cache_size,
+                # cache_elements=cache_elements,
+                # cache_preemption=cache_preemption,
+                compression=compression,
+                compression_level=compression_level,
+                shuffling=shuffling,
+                # memory=memory,
                 mode=mode,
                 overwrite_output=overwrite_output,
                 engine=engine,
