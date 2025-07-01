@@ -11,6 +11,8 @@ from rekx.typer.parameters import (
     typer_option_mask_and_scale,
     typer_option_dry_run,
     typer_option_verbose,
+    typer_option_latitude_in_degrees,
+    typer_option_longitude_in_degrees,
 )
 import xarray as xr
 from rich import print
@@ -70,50 +72,16 @@ def modify_chunk_size(
             )
 
 
-# def _rechunk_single_file(
-#     input_file: Path,
-#     output_file: Path,
-#     time: int,
-#     latitude: int,
-#     longitude: int,
-#     # Other parameters
-# ) -> None:
-#     """Core rechunking logic for a single file"""
-#     try:
-#         with xr.open_dataset(input_file, engine="netcdf4") as dataset:
-#             # Your existing rechunking logic here
-#             # Example:
-#             encoding = {}
-#             for var in dataset.data_vars:
-#                 chunk_sizes = []
-#                 for dim in dataset[var].dims:
-#                     if dim == 'time': 
-#                         chunk_size = time if time > 0 else len(dataset[dim])
-#                     elif dim == 'lat': 
-#                         chunk_size = latitude
-#                     elif dim == 'lon': 
-#                         chunk_size = longitude
-#                     else:
-#                         chunk_size = len(dataset[dim])
-#                     chunk_sizes.append(chunk_size)
-#                 encoding[var] = {'chunksizes': tuple(chunk_sizes)}
-            
-#             dataset.to_netcdf(
-#                 output_file,
-#                 encoding=encoding,
-#                 engine="h5netcdf"
-#             )
-#         typer.echo(f"Processed {input_file.name}")
-#     except Exception as e:
-#         typer.echo(f"Error processing {input_file.name}: {str(e)}")
-
-
 def _rechunk_netcdf_file(
     input_filepath: Path,
     output_filepath: Path | None,
     time: int,
     latitude: int,
     longitude: int,
+    min_longitude: float | None = None,
+    max_longitude: float | None = None,
+    min_latitude: float | None = None,
+    max_latitude: float | None = None,
     fix_unlimited_dimensions: bool = FIX_UNLIMITED_DIMENSIONS_DEFAULT,
     variable_set: list[XarrayVariableSet] = list[XarrayVariableSet.all],
     mask_and_scale: bool = False,
@@ -151,6 +119,10 @@ def _rechunk_netcdf_file(
                 time=time,
                 latitude=latitude,
                 longitude=longitude,
+                min_longitude=min_longitude,
+                max_longitude=max_longitude,
+                min_latitude=min_latitude,
+                max_latitude=max_latitude,
                 mask_and_scale=mask_and_scale,
                 drop_other_variables=drop_other_variables,
                 fix_unlimited_dimensions=fix_unlimited_dimensions,
@@ -325,6 +297,10 @@ def rechunk_netcdf_files(
     longitude: Annotated[
         int, typer.Option(help="New chunk size for the `lon` dimension.")
     ],
+    min_longitude: Annotated[Optional[float], typer_option_longitude_in_degrees] = None,
+    max_longitude: Annotated[Optional[float], typer_option_longitude_in_degrees] = None,
+    min_latitude: Annotated[Optional[float], typer_option_latitude_in_degrees] = None,
+    max_latitude: Annotated[Optional[float], typer_option_latitude_in_degrees] = None,
     pattern: Annotated[str, typer_option_filename_pattern] = "*.nc",
     output_directory: Annotated[Path, typer_option_output_directory] = Path('.'),
     fix_unlimited_dimensions: Annotated[
@@ -418,6 +394,10 @@ def rechunk_netcdf_files(
         time=time,
         latitude=latitude,
         longitude=longitude,
+        min_longitude=min_longitude,
+        max_longitude=max_longitude,
+        min_latitude=min_latitude,
+        max_latitude=max_latitude,
         fix_unlimited_dimensions=fix_unlimited_dimensions,
         variable_set=variable_set,
         mask_and_scale=mask_and_scale,
@@ -455,6 +435,10 @@ def rechunk_netcdf_files(
                 time=time,
                 latitude=latitude,
                 longitude=longitude,
+                min_longitude=min_longitude,
+                max_longitude=max_longitude,
+                min_latitude=min_latitude,
+                max_latitude=max_latitude,
                 fix_unlimited_dimensions=fix_unlimited_dimensions,
                 variable_set=variable_set,
                 cache_size=cache_size,

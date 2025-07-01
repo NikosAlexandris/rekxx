@@ -1,4 +1,5 @@
 from pathlib import Path
+from .utilities import set_location_indexers
 from rekx.drop import drop_other_data_variables
 from rekx.nccopy.constants import (
     COMPRESSION_FILTER_DEFAULT,
@@ -13,6 +14,10 @@ def rechunk_netcdf_via_xarray(
     time: int,
     latitude: int,
     longitude: int,
+    min_longitude: float,
+    max_longitude: float,
+    min_latitude: float,
+    max_latitude: float,
     mask_and_scale: bool = False,
     drop_other_variables: bool = True,
     fix_unlimited_dimensions: bool = False,
@@ -65,6 +70,29 @@ def rechunk_netcdf_via_xarray(
     # Drop "other" data variables
     if drop_other_variables:
         dataset = drop_other_data_variables(dataset)
+            
+    # Clip
+    indexers = set_location_indexers(
+        data_array=dataset,
+        longitude=slice(min_longitude, max_longitude),
+        latitude=slice(min_latitude, max_latitude),
+        # verbose=verbose,
+    )
+    # from devtools import debug
+    # debug(locals())
+    dataset = dataset.sel(
+        **indexers,
+        # tolerance=tolerance,
+    )
+    # from devtools import debug
+    # debug(locals())
+    # output_handlers = {
+    #     ".nc": lambda area_time_series, output_filename: 
+    #         area_time_series.to_netcdf(
+    #             output_filename,
+    #             # engine="h5netcdf",
+    #         ),
+    # }
 
     # Reset legacy encoding
     dataset.drop_encoding()
@@ -114,8 +142,23 @@ def rechunk_netcdf_via_xarray(
         }
 
     # Write chunked data as a NetCDF file
-    if overwrite_output:
-        mode = "w"
+    if output_filepath.exists():
+        if not overwrite_output:
+            print(f"The output file '{output_filepath}' already exists. It will not be overwritten.")
+            # warnings.warn(f"The output file '{output_filepath}' already exists. It will not be overwritten.")
+            # logger.warning(f"The output file '{output_filepath}' already exists. It will not be overwritten.")
+            return  # Exit the function without writing the file
+        else:
+            mode = "w"
+            # print(f"Overwriting the existing file '{output_filepath}'.")
+            # logger.info(f"Overwriting the existing file '{output_filepath}'.")
+
+    # extension = output_filepath.suffix.lower()
+    # if extension in output_handlers:
+    #     output_handlers[extension](area_time_series, output_filepath)
+    # else:
+    #     raise ValueError(f"Unsupported file extension: {extension}")
+
 
     if fix_unlimited_dimensions:
         unlimited_dimensions = []

@@ -83,10 +83,20 @@ typer_argument_longitude_in_degrees = typer.Argument(
     min=LONGITUDE_MINIMUM,
     max=LONGITUDE_MAXIMUM,
 )
+typer_option_longitude_in_degrees = typer.Option(
+    help=longitude_typer_help,
+    min=LONGITUDE_MINIMUM,
+    max=LONGITUDE_MAXIMUM,
+)
 
 latitude_typer_help = "Latitude in decimal degrees ranging in [-90, 90]"
 latitude_in_degrees_help = latitude_typer_help
 typer_argument_latitude_in_degrees = typer.Argument(
+    help=latitude_typer_help,
+    min=LATITUDE_MINIMUM,
+    max=LATITUDE_MAXIMUM,
+)
+typer_option_latitude_in_degrees = typer.Option(
     help=latitude_typer_help,
     min=LATITUDE_MINIMUM,
     max=LATITUDE_MAXIMUM,
