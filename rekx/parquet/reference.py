@@ -6,10 +6,19 @@ from rekx.parquet.create import (
     create_single_parquet_store,
 )
 from rekx.constants import (
+    DEFAULT_CACHE_SIZE,
     DEFAULT_RECORD_SIZE,
+    DRY_RUN_DEFAULT,
+    OVERWRITE_OUTPUT_DEFAULT,
     VERBOSE_LEVEL_DEFAULT,
 )
 from rekx.typer.parameters import (
+    typer_argument_source_directory,
+    typer_option_filename_pattern,
+    typer_option_cache_size,
+    typer_option_record_size,
+    typer_option_number_of_workers,
+    typer_option_overwrite_output,
     typer_option_dry_run,
     typer_option_verbose,
 )
@@ -19,7 +28,7 @@ def parquet_reference(
     input_file: Path,
     output_directory: Path = Path("."),
     record_size: int = DEFAULT_RECORD_SIZE,
-    dry_run: Annotated[bool, typer_option_dry_run] = False,
+    dry_run: Annotated[bool, typer_option_dry_run] = DRY_RUN_DEFAULT,
     verbose: Annotated[int, typer_option_verbose] = VERBOSE_LEVEL_DEFAULT,
 ):
     """Create Parquet references from an HDF5/NetCDF file"""
@@ -42,12 +51,14 @@ def parquet_reference(
 
 
 def parquet_multi_reference(
-    source_directory: Path,
+    source_directory: Annotated[Path, typer_argument_source_directory],
     output_directory: Path = Path("."),
-    pattern: str = "*.nc",
-    record_size: int = DEFAULT_RECORD_SIZE,
-    workers: int = 4,
-    dry_run: Annotated[bool, typer_option_dry_run] = False,
+    pattern: Annotated[str, typer_option_filename_pattern] = "*.nc",
+    cache_size: Annotated[int, typer_option_cache_size] = DEFAULT_CACHE_SIZE,
+    record_size: Annotated[int, typer_option_record_size] = DEFAULT_RECORD_SIZE,
+    workers: Annotated[int, typer_option_number_of_workers] = 4,
+    overwrite_output: Annotated[bool, typer_option_overwrite_output] = OVERWRITE_OUTPUT_DEFAULT,
+    dry_run: Annotated[bool, typer_option_dry_run] = DRY_RUN_DEFAULT,
     verbose: Annotated[int, typer_option_verbose] = VERBOSE_LEVEL_DEFAULT,
 ):
     """Create Parquet references from an HDF5/NetCDF file"""
@@ -70,7 +81,10 @@ def parquet_multi_reference(
         source_directory=source_directory,
         output_directory=output_directory,
         pattern=pattern,
+        cache_size=cache_size,
         record_size=record_size,
         workers=workers,
+        overwrite_output=overwrite_output,
+        dry_run=dry_run,
         verbose=verbose,
     )
