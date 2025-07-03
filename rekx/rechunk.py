@@ -1,4 +1,6 @@
 import shlex
+from distributed import LocalCluster
+from rekx.dask_configuration import auto_configure_for_large_dataset
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -337,6 +339,17 @@ def rechunk_netcdf_files(
 
         rechunking_timer_start = timer.time()
 
+    if not memory_limit:
+        memory_limit = auto_memory_limit
+
+   # Auto-configure Dask for single large file processing
+    dask_configuration = auto_configure_for_large_dataset(
+        memory_limit=memory_limit,
+        workers=workers,
+        threads_per_worker=threads_per_worker,
+        verbose=verbose,
+    )
+
     # Resolve input files
     if source_path.is_file():
         input_file_paths = [source_path]
@@ -351,17 +364,17 @@ def rechunk_netcdf_files(
         typer.echo("No files found matching pattern")
         return
 
+    # Dry run logic
     if dry_run:
         dry_run_message = (
-                f"Dry running operations that [bold]would be performed[/bold] :"
-                f"\n"
-                f"> Matching filename pattern [code]{pattern}[/code] in [code]{source_path}[/code]" 
-                f"\n"
-                f"> Number of files matched : {len(list(input_file_paths))}"
-                f"\n"
-                f"> Writing rechunked data in [code]{output_directory}[/code]"
-                )
+            f"Dry running operations that [bold]would be performed[/bold] :"
+            f"\n> Configure Dask : {dask_configuration}"
+            f"\n> Match filename pattern [code]{pattern}[/code] in [code]{source_path}[/code]"
+            f"\n> Number of files matched : {len(list(input_file_paths))}"
+            f"\n> Write rechunked data in [code]{output_directory}[/code]"
+        )
         print(dry_run_message)
+        return
 
     else:
         # "Make" the output directory
@@ -379,11 +392,9 @@ def rechunk_netcdf_files(
     ]
 
     # Initialize parallel client
-    client = Client(
-        n_workers=workers,
-        threads_per_worker=1,  # Better for I/O bound tasks
-        memory_limit=memory_limit,
-    )
+    cluster = LocalCluster(**dask_configuration)
+    client = Client(cluster)
+
     if verbose:
         print(f"Processing {len(input_file_paths)} files with {workers} workers")
 
@@ -420,7 +431,7 @@ def rechunk_netcdf_files(
     # Build the task graph
     tasks = []
     for in_file, out_file in zip(input_file_paths, output_files):
-        task = dask.delayed(partial_rechunk_command)(
+        task = dask.delayed(partial_rechunk_command, name="Rechunk data in NetCDf file")(
             in_file,
             out_file,
         )
@@ -460,6 +471,8 @@ def rechunk_netcdf_files(
 
     if not dry_run:
         dask.compute(*tasks)
+        # client.close()
+        # cluster.close()
 
         if verbose:
             print(f"[bold green]Rechunking operations [code]{backend.name}[/code] complete.[/bold green]")
