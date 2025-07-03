@@ -10,19 +10,26 @@ from .constants import NOT_AVAILABLE
 def print_chunk_shapes_table(chunk_shapes):
     table = Table(show_header=True, header_style="bold magenta", box=SIMPLE_HEAD)
     table.add_column("Variable", style="dim", no_wrap=True)
-    table.add_column("Shapes", no_wrap=True)
+    table.add_column("Chunk size", no_wrap=True)
+    table.add_column("Chunks", no_wrap=True)
     table.add_column("Files", no_wrap=True)
     table.add_column("Count", no_wrap=True)
 
-    for variable, shapes in chunk_shapes.items():
-        for shape, files in shapes.items():
-            shapes_string = " x ".join(map(str, shape))
-            files = list(files)  # make subscriptable
+    for variable, shapes_dictionary in chunk_shapes.items():
+        for size, info in shapes_dictionary.items():
+            sizes_string = " x ".join(map(str, size)) if size != 'contiguous' else 'Contiguous'
+            files = list(info['files'])  # make subscriptable
             files_string = (
                 Path(files[0]).name if len(files) == 1 else f"{Path(files[0]).name} .."
             )
             count_string = str(len(files))
-            table.add_row(variable, shapes_string, files_string, count_string)
+            table.add_row(
+                variable,
+                sizes_string,
+                str(info["chunks"]),
+                files_string,
+                count_string,
+            )
 
     console = Console()
     console.print(table)

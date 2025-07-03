@@ -1,4 +1,5 @@
 import os
+from math import ceil, prod
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Annotated, List, Tuple
@@ -7,6 +8,7 @@ from humanize import naturalsize
 from netCDF4 import Dataset
 
 from rekx.constants import NOT_AVAILABLE, REPETITIONS_DEFAULT
+from rekx.diagnose import count_chunks
 from rekx.log import logger
 from rekx.models import (
     XarrayVariableSet,
@@ -19,6 +21,26 @@ from rekx.typer.parameters import (
     longitude_in_degrees_help,
     repetitions_help,
 )
+
+def count_references(
+    variable,
+):
+    """
+    """
+    total_references = 0
+    for file_metadata in metadata_series:
+        for var in file_metadata['variables']:
+            shape = file_metadata['variables'][var]['shape']
+            chunks = file_metadata['variables'][var]['chunks']
+            if shape and chunks:
+                n_time = shape[0]  # assuming time is first
+                n_lat_chunks = math.ceil(shape[1] / chunks[1])
+                n_lon_chunks = math.ceil(shape[2] / chunks[2])
+                total_references += n_time * n_lat_chunks * n_lon_chunks
+
+    print(f"Total references (all files): {total_references}")
+
+    return total_references
 
 
 def get_netcdf_metadata(
@@ -112,16 +134,19 @@ def get_netcdf_metadata(
             XarrayVariableSet, "data", dataset
         )
         variables_metadata = {}
+        # total_references = 0
         for variable_name in selected_variables:
-            variable = dataset[
-                variable_name
-            ]  # variable is not a simple string anymore!
+            variable = dataset[variable_name]
             cache_metadata = variable.get_var_chunk_cache()
+            number_of_chunks = count_chunks(dataset=dataset, variable=variable_name)
+
+            
             variable_metadata = {
                 "Shape": " x ".join(map(str, variable.shape)),
-                "Chunks": " x ".join(map(str, variable.chunking()))
+                "Chunk size": " x ".join(map(str, variable.chunking()))
                 if variable.chunking() != "contiguous"
                 else "contiguous",
+                "Chunks": number_of_chunks, 
                 "Cache": cache_metadata[0] if cache_metadata[0] else NOT_AVAILABLE,
                 "Elements": cache_metadata[1] if cache_metadata[1] else NOT_AVAILABLE,
                 "Preemption": cache_metadata[2] if cache_metadata[2] else NOT_AVAILABLE,
