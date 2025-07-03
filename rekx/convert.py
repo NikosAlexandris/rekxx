@@ -109,6 +109,7 @@ def read_parquet_via_zarr(
         return xr.open_dataset(
             time_series.as_posix(),
             **open_dataset_options,
+            chunks={},  # important !
         )
 
     except Exception as exception:
