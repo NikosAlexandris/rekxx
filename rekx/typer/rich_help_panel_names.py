@@ -1,3 +1,4 @@
+rich_help_panel_chunking_parameters = "All about chunks"
 rich_help_panel_diagnose = "Diagnose chunking layout"
 rich_help_panel_suggest = "Suggest chunking layout"
 rich_help_panel_rechunking = "Rechunk data"

@@ -10,6 +10,7 @@ from rekx.constants import (
     LONGITUDE_MINIMUM,
 )
 from rekx.typer.rich_help_panel_names import (
+    rich_help_panel_chunking_parameters,
     rich_help_panel_advanced_options,
     rich_help_panel_output,
     rich_help_panel_select,
@@ -226,6 +227,9 @@ typer_option_filename_pattern = typer.Option(
     help="Filename pattern to match",
     # rich_help_panel=
 )
+typer_option_overwrite_output = typer.Option(
+    help="Overwrite existing output",
+)
 typer_option_number_of_workers = typer.Option(
     help="Number of workers for parallel processing using `concurrent.futures`",
     rich_help_panel=rich_help_panel_advanced_options,
@@ -304,6 +308,16 @@ typer_argument_variable_shape = typer.Argument(
     help="Variable shape",
     parser=parse_variable_shape,
     # default=None,
+)
+
+typer_option_record_size = typer.Option(
+    help="Number of records in a reference file",
+    rich_help_panel=rich_help_panel_chunking_parameters,
+)
+
+typer_option_cache_size = typer.Option(
+    help="Numer of reference sets (files, like in a Parquet format) cached in memory",
+    rich_help_panel=rich_help_panel_chunking_parameters,
 )
 
 # Output options

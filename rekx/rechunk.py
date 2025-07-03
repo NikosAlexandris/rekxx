@@ -1,4 +1,5 @@
 import shlex
+
 from distributed import LocalCluster
 from rekx.dask_configuration import auto_configure_for_large_dataset
 import subprocess
@@ -11,6 +12,7 @@ from rekx.typer.parameters import (
     typer_option_output_directory,
     typer_option_filename_pattern,
     typer_option_mask_and_scale,
+    typer_option_overwrite_output,
     typer_option_dry_run,
     typer_option_verbose,
     typer_option_latitude_in_degrees,
@@ -43,6 +45,7 @@ from rekx.nccopy.constants import (
     COMPRESSION_LEVEL_DEFAULT,
     SHUFFLING_DEFAULT,
     RECHUNK_IN_MEMORY_DEFAULT,
+    OVERWRITE_OUTPUT_DEFAULT,
 )
 
 
@@ -313,23 +316,25 @@ def rechunk_netcdf_files(
     ] = list[XarrayVariableSet.all],
     mask_and_scale: Annotated[bool, typer_option_mask_and_scale] = False,
     drop_other_variables: Annotated[bool, typer.Option(help="Drop variables other than the main one. [yellow bold]Attention, presets are the author's best guess![/yellow bold]")] = True,
-    cache_size: Optional[int] = CACHE_SIZE_DEFAULT,
-    cache_elements: Optional[int] = CACHE_ELEMENTS_DEFAULT,
-    cache_preemption: Optional[float] = CACHE_PREEMPTION_DEFAULT,
-    compression: str = COMPRESSION_FILTER_DEFAULT,
-    compression_level: int = COMPRESSION_LEVEL_DEFAULT,
-    shuffling: str | None = SHUFFLING_DEFAULT,
-    memory: bool = RECHUNK_IN_MEMORY_DEFAULT,
     backend: Annotated[
         RechunkingBackend,
         typer.Option(
             help="Backend to use for rechunking. [code]nccopy[/code] [red]Not Implemented Yet![/red]"
         ),
     ] = RechunkingBackend.xarray,
+    compression: str = COMPRESSION_FILTER_DEFAULT,
+    compression_level: int = COMPRESSION_LEVEL_DEFAULT,
+    shuffling: str | None = SHUFFLING_DEFAULT,
+    cache_size: Annotated[Optional[int], typer.Option(help="[yellow bold]Applicable to `nccopy`[/yellow bold]")] = CACHE_SIZE_DEFAULT,
+    cache_elements: Annotated[Optional[int], typer.Option(help="[yellow bold]Applicable to `nccopy`[/yellow bold]")] = CACHE_ELEMENTS_DEFAULT,
+    cache_preemption: Annotated[Optional[float], typer.Option(help="[yellow bold]Applicable to `nccopy`[/yellow bold]")] = CACHE_PREEMPTION_DEFAULT,
+    memory: Annotated[bool, typer.Option(help="[yellow bold]Applicable to `nccopy`[/yellow bold]")] = RECHUNK_IN_MEMORY_DEFAULT,
+    workers: Annotated[int, typer.Option(help="Number of workers")] = 4,
+    threads_per_worker: Annotated[int, typer.Option(help="Threads per worker")] = 1,
+    memory_limit: Annotated[int, typer.Option(help="Memory limit for the Dask cluster in GB. [yellow bold]Will override [code]auto-memory[/code][/yellow bold]")] = None,
+    auto_memory_limit: Annotated[bool, typer.Option(help="Memory limit per worker")] = True,
     mode: Annotated[ str, typer.Option(help="Writing file mode")] = 'w',
-    overwrite_output: Annotated[bool, typer.Option(help="Overwrite existing output file")] = False,
-    workers: Annotated[int, typer.Option(help="Number of worker processes.")] = 4,
-    memory_limit: str = "4GB",
+    overwrite_output: Annotated[bool, typer_option_overwrite_output] = OVERWRITE_OUTPUT_DEFAULT,
     dry_run: Annotated[bool, typer_option_dry_run] = False,
     verbose: Annotated[int, typer_option_verbose] = VERBOSE_LEVEL_DEFAULT,
 ) -> None:
