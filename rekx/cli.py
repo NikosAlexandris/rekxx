@@ -1,6 +1,7 @@
 """
 Rekx is a command line interface to Kerchunk
 """
+
 from typing import Annotated
 
 import typer
@@ -15,6 +16,8 @@ from .inspect import inspect_netcdf_data
 from .log import initialize_logger, logger
 from .parquet.combine import (
     combine_parquet_stores_to_parquet,
+)
+from .parquet.combine_pairs import (
     combine_pair_wise_parquet_stores_to_parquet,
 )
 from .parquet.reference import (

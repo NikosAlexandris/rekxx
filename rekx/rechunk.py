@@ -45,8 +45,8 @@ from rekx.nccopy.constants import (
     COMPRESSION_LEVEL_DEFAULT,
     SHUFFLING_DEFAULT,
     RECHUNK_IN_MEMORY_DEFAULT,
-    OVERWRITE_OUTPUT_DEFAULT,
 )
+from rekx.constants import OVERWRITE_OUTPUT_DEFAULT
 
 
 def modify_chunk_size(

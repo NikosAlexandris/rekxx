@@ -11,6 +11,7 @@ from rekx.constants import (
     DEFAULT_CACHE_SIZE,
     DEFAULT_RECORD_SIZE,
     OVERWRITE_OUTPUT_DEFAULT,
+    DRY_RUN_DEFAULT,
     VERBOSE_LEVEL_DEFAULT,
 )
 from rekx.progress import DisplayMode, display_context
