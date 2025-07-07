@@ -37,9 +37,11 @@ def create_parquet_store(
                 return  # Exit the function without writing the file
         else:
             output_parquet_store.mkdir(parents=True, exist_ok=True)
+
         try:
             log_messages.append(f"Creating a filesystem mapper for {output_parquet_store}")
             filesystem = fsspec.filesystem("file")
+
             # Create LazyReferenceMapper to pass to SingleHdf5ToZarr
             lazy_output = LazyReferenceMapper.create(
                 root=str(output_parquet_store),
@@ -51,26 +53,25 @@ def create_parquet_store(
             log_messages.append(f"Created the filesystem mapper {lazy_output}")
 
             log_messages.append(f"Kerchunking the file {input_file}")
-            single_zarr = SingleHdf5ToZarr(str(input_file), out=lazy_output)
-            single_zarr.translate()
+            # zarr_like_object = SingleHdf5ToZarr(str(input_file), out=lazy_output)
+            zarr_like_object = SingleHdf5ToZarr(str(input_file))
+            parquet_store = zarr_like_object.translate()
             log_messages.append(f"Kerchunked the file {input_file}")
 
-        except Exception as e:
-            print(f"Failed processing file [code]{input_file}[/code] : {e}")
-            log_messages.append(f"Exception occurred: {e}")
+        except Exception:
+            print(f"Failed processing file [code]{input_file}[/code]")
+            log_messages.append(f"Exception occurred")
             log_messages.append("Traceback (most recent call last):")
-
             tb_lines = traceback.format_exc().splitlines()
             for line in tb_lines:
                 log_messages.append(line)
-
             raise
 
         finally:
             logger.info("\n".join(log_messages))
 
-        logger.info(f"Returning a Parquet store : {output_parquet_store}")
-        return output_parquet_store
+        # logger.info(f"Returning a Parquet store : {output_parquet_store}")
+        return parquet_store
 
 
 def create_single_parquet_store(
@@ -83,9 +84,13 @@ def create_single_parquet_store(
     verbose: int = VERBOSE_LEVEL_DEFAULT,
 ):
     """Helper function for create_multiple_parquet_stores()"""
+
+    # Build a name for the output Parquet store (which is a directory)
     filename = input_file_path.stem
     single_parquet_store = output_directory / f"{filename}.parquet"
-    create_parquet_store(
+
+    # Generate Parquet store
+    parquet_store = create_parquet_store(
             input_file=input_file_path,
         output_parquet_store=single_parquet_store,
         cache_size=cache_size,
@@ -98,11 +103,13 @@ def create_single_parquet_store(
 
     if verbose > 1:
         dataset = xr.open_dataset(
-            str(single_parquet_store),
+            str(parquet_store),
             engine="kerchunk",
             storage_options=dict(remote_protocol="file"),
         )
         print(dataset)
+
+    return parquet_store
 
 
 def create_multiple_parquet_stores(
