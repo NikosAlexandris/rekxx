@@ -14,10 +14,15 @@ def rechunk_netcdf_via_xarray(
     time: int,
     latitude: int,
     longitude: int,
-    min_longitude: float,
-    max_longitude: float,
-    min_latitude: float,
-    max_latitude: float,
+    min_longitude: float | None,
+    min_x: int | None,
+    max_longitude: float | None,
+    max_x: int | None,
+    min_latitude: float | None,
+    min_y: int | None,
+    max_latitude: float | None,
+    max_y: int | None,
+    every_nth_timestamp: int | None = None,
     mask_and_scale: bool = False,
     drop_other_variables: bool = True,
     fix_unlimited_dimensions: bool = False,
@@ -72,20 +77,33 @@ def rechunk_netcdf_via_xarray(
         dataset = drop_other_data_variables(dataset)
             
     # Clip
-    indexers = set_location_indexers(
-        data_array=dataset,
-        longitude=slice(min_longitude, max_longitude),
-        latitude=slice(min_latitude, max_latitude),
-        # verbose=verbose,
-    )
-    # from devtools import debug
-    # debug(locals())
-    dataset = dataset.sel(
-        **indexers,
-        # tolerance=tolerance,
-    )
-    # from devtools import debug
-    # debug(locals())
+    if any([min_latitude, min_longitude]):
+        indexers = set_location_indexers(
+            data_array=dataset,
+            longitude=slice(min_longitude, max_longitude),
+            latitude=slice(min_latitude, max_latitude),
+            # verbose=verbose,
+        )
+        dataset = dataset.sel(
+            **indexers,
+            # tolerance=tolerance,
+        )
+    elif any([min_y, min_x]):
+        indexers = set_location_indexers(
+            data_array=dataset,
+            longitude=slice(min_x, max_x),
+            latitude=slice(min_y, max_y),
+            # verbose=verbose,
+        )
+        dataset = dataset.isel(
+            **indexers,
+            # tolerance=tolerance,
+        )
+
+    if every_nth_timestamp:
+        dataset = dataset.isel(
+            time=slice(0, None, every_nth_timestamp)
+        )
     # output_handlers = {
     #     ".nc": lambda area_time_series, output_filename: 
     #         area_time_series.to_netcdf(
