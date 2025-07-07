@@ -95,14 +95,14 @@ def combine_multiple_parquet_stores(
                 out=lazy_output,
             )
             multi_zarr.translate()
-            lazy_output.flush()
+            # lazy_output.flush()
 
             if verbose:
                 print(f"\n[bold]> Combined Parquet store name :[/bold] {output_parquet_store}")
             return output_parquet_store
 
-        except Exception as e:
-            print(f"Failed creating the [code]{output_parquet_store}[/code] : {e}!")
+        except Exception:
+            print(f"Failed creating the [code]{output_parquet_store}[/code] !")
             import traceback
 
             traceback.print_exc()
