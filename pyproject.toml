@@ -82,7 +82,7 @@ issues = "https://github.com/NikosAlexandris/rekx/issues"
 repository = 'https://github.com/NikosAlexandris/rekx'
 
 [project.scripts]
-rekx = "rekx.cli:app"
+rekx = "rekx.cli.cli:app"
 
 [tool.hatch.version]
 source = "vcs"
